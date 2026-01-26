@@ -7,7 +7,7 @@
 // 2. 将事件分发到 messageStore
 // 3. 与具体 session 无关，处理所有 session 的事件
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { messageStore } from '../store'
 import { subscribeToEvents } from '../api'
 import type { 
@@ -27,6 +27,10 @@ interface GlobalEventsCallbacks {
 }
 
 export function useGlobalEvents(callbacks?: GlobalEventsCallbacks) {
+  // 使用 ref 保存 callbacks，避免重新订阅 SSE
+  const callbacksRef = useRef(callbacks)
+  callbacksRef.current = callbacks
+
   useEffect(() => {
     // 节流滚动
     let scrollPending = false
@@ -35,7 +39,7 @@ export function useGlobalEvents(callbacks?: GlobalEventsCallbacks) {
       scrollPending = true
       requestAnimationFrame(() => {
         scrollPending = false
-        callbacks?.onScrollRequest?.()
+        callbacksRef.current?.onScrollRequest?.()
       })
     }
 
@@ -77,50 +81,49 @@ export function useGlobalEvents(callbacks?: GlobalEventsCallbacks) {
       },
 
       // ============================================
-      // Permission Events → callbacks
+      // Permission Events → callbacks (通过 ref 调用)
       // ============================================
       
       onPermissionAsked: (request) => {
-        // 只处理当前 session 的权限请求
         const currentSessionId = messageStore.getCurrentSessionId()
         if (request.sessionID === currentSessionId) {
-          callbacks?.onPermissionAsked?.(request)
+          callbacksRef.current?.onPermissionAsked?.(request)
         }
       },
 
       onPermissionReplied: (data) => {
         const currentSessionId = messageStore.getCurrentSessionId()
         if (data.sessionID === currentSessionId) {
-          callbacks?.onPermissionReplied?.(data)
+          callbacksRef.current?.onPermissionReplied?.(data)
         }
       },
 
       // ============================================
-      // Question Events → callbacks
+      // Question Events → callbacks (通过 ref 调用)
       // ============================================
 
       onQuestionAsked: (request) => {
         const currentSessionId = messageStore.getCurrentSessionId()
         if (request.sessionID === currentSessionId) {
-          callbacks?.onQuestionAsked?.(request)
+          callbacksRef.current?.onQuestionAsked?.(request)
         }
       },
 
       onQuestionReplied: (data) => {
         const currentSessionId = messageStore.getCurrentSessionId()
         if (data.sessionID === currentSessionId) {
-          callbacks?.onQuestionReplied?.(data)
+          callbacksRef.current?.onQuestionReplied?.(data)
         }
       },
 
       onQuestionRejected: (data) => {
         const currentSessionId = messageStore.getCurrentSessionId()
         if (data.sessionID === currentSessionId) {
-          callbacks?.onQuestionRejected?.(data)
+          callbacksRef.current?.onQuestionRejected?.(data)
         }
       },
     })
 
     return unsubscribe
-  }, [callbacks])
+  }, []) // 空依赖，只订阅一次
 }

@@ -195,10 +195,8 @@ function handleGlobalEvent(
 ) {
   const { type, properties } = globalEvent.payload
   
-  // Debug logging for permission events
-  if (type.startsWith('permission.') || type.startsWith('question.')) {
-    console.log(`[SSE] ${type}:`, properties)
-  }
+  // Debug logging for all events
+  console.log(`[SSE] Event received: ${type}`, properties)
   
   switch (type) {
     case 'message.updated': {
