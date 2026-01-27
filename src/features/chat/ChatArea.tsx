@@ -159,7 +159,7 @@ export const ChatArea = memo(forwardRef<ChatAreaHandle, ChatAreaProps>(({
     }
     
     return (
-      <div ref={handleRef} className="w-full max-w-5xl mx-auto px-4 py-3">
+      <div ref={handleRef} className="w-full max-w-3xl mx-auto px-4 py-3">
         <div className={`flex ${msg.info.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`min-w-0 group ${msg.info.role === 'assistant' ? 'w-full' : ''}`}>
             <MessageRenderer 

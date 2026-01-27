@@ -121,7 +121,7 @@ export function Sidebar({
         style={sidebarStyle}
         className={`
           flex flex-col h-full bg-bg-50/50 backdrop-blur-xl
-          overflow-hidden relative
+          overflow-hidden
           ${isMobile 
             ? `fixed inset-y-0 left-0 z-40 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
             : `relative border-r border-border-200/50 ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]'}`

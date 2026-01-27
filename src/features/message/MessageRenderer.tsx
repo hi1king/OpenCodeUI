@@ -223,9 +223,7 @@ function ToolGroup({ parts, stepFinish }: ToolGroupProps) {
   const isAllDone = doneCount === totalCount
   
   return (
-    <div className={`flex flex-col transition-[width] duration-300 ease-in-out ${
-      expanded ? 'w-full' : 'w-[260px]'
-    }`}>
+    <div className="flex flex-col w-auto -mx-3">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-1.5 px-3 py-2 text-text-500 text-sm hover:bg-bg-200/30 rounded-lg transition-colors"

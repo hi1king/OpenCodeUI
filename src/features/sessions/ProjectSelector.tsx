@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import type { ApiProject } from '../../api'
 
 interface ProjectSelectorProps {
@@ -19,6 +20,10 @@ export function ProjectSelector({
   onRemoveProject,
 }: ProjectSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; projectId: string | null }>({
+    isOpen: false,
+    projectId: null
+  })
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 点击外部关闭
@@ -113,9 +118,7 @@ export function ProjectSelector({
                   }}
                   onRemove={(e) => {
                     e.stopPropagation()
-                    if (confirm('Remove this project from list?')) {
-                      onRemoveProject(project.id)
-                    }
+                    setDeleteConfirm({ isOpen: true, projectId: project.id })
                   }}
                   getDisplayName={getDisplayName}
                   getFullPath={getFullPath}
@@ -145,6 +148,21 @@ export function ProjectSelector({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, projectId: null })}
+        onConfirm={() => {
+          if (deleteConfirm.projectId) {
+            onRemoveProject(deleteConfirm.projectId)
+          }
+          setDeleteConfirm({ isOpen: false, projectId: null })
+        }}
+        title="Remove Project"
+        description="Are you sure you want to remove this project folder from the list? This will not delete the actual files."
+        confirmText="Remove"
+        variant="danger"
+      />
     </div>
   )
 }
@@ -162,6 +180,9 @@ function ProjectItem({
   getDisplayName: (p: ApiProject) => string
   getFullPath: (p: ApiProject) => string
 }) {
+  const colorName = project.icon?.color || (project.id === 'global' ? 'blue' : 'gray')
+  const colorClass = getColorClass(colorName)
+
   return (
     <button
       onClick={onClick}
@@ -169,12 +190,7 @@ function ProjectItem({
       title={getFullPath(project)}
     >
       <div 
-        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white shadow-sm"
-        style={{ 
-          backgroundColor: project.icon?.color 
-            ? getColorValue(project.icon.color) 
-            : '#6366f1' 
-        }}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${colorClass}`}
       >
         {project.id === 'global' ? (
           <GlobeIcon className="w-4 h-4" />
@@ -204,29 +220,28 @@ function ProjectItem({
   )
 }
 
-// 颜色名称到实际值的映射
-function getColorValue(colorName: string): string {
-  const colors: Record<string, string> = {
-    red: '#ef4444',
-    orange: '#f97316',
-    amber: '#f59e0b',
-    yellow: '#eab308',
-    lime: '#84cc16',
-    green: '#22c55e',
-    emerald: '#10b981',
-    teal: '#14b8a6',
-    cyan: '#06b6d4',
-    sky: '#0ea5e9',
-    blue: '#3b82f6',
-    indigo: '#6366f1',
-    violet: '#8b5cf6',
-    purple: '#a855f7',
-    fuchsia: '#d946ef',
-    pink: '#ec4899',
-    rose: '#f43f5e',
-    gray: '#6b7280',
+// 颜色映射：使用语义化 CSS 变量 + 透明度
+function getColorClass(colorName: string): string {
+  const map: Record<string, string> = {
+    red: 'text-danger-100 bg-danger-100/10',
+    orange: 'text-warning-100 bg-warning-100/10',
+    amber: 'text-warning-100 bg-warning-100/10',
+    yellow: 'text-warning-100 bg-warning-100/10',
+    green: 'text-success-100 bg-success-100/10',
+    emerald: 'text-success-100 bg-success-100/10',
+    teal: 'text-info-100 bg-info-100/10',
+    cyan: 'text-info-100 bg-info-100/10',
+    sky: 'text-info-100 bg-info-100/10',
+    blue: 'text-info-100 bg-info-100/10',
+    indigo: 'text-accent-main-100 bg-accent-main-100/10',
+    violet: 'text-accent-main-100 bg-accent-main-100/10',
+    purple: 'text-accent-main-100 bg-accent-main-100/10',
+    fuchsia: 'text-accent-main-100 bg-accent-main-100/10',
+    pink: 'text-accent-main-100 bg-accent-main-100/10',
+    rose: 'text-danger-100 bg-danger-100/10',
+    gray: 'text-text-400 bg-bg-200',
   }
-  return colors[colorName] || colorName
+  return map[colorName] || map['gray']
 }
 
 function FolderIcon({ className }: { className?: string }) {
