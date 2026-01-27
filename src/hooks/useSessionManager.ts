@@ -88,6 +88,7 @@ export function useSessionManager({
         directory: sessionInfo?.directory ?? dir ?? '',
         hasMoreHistory: apiMessages.length >= INITIAL_MESSAGE_LIMIT,
         revertState: sessionInfo?.revert ?? null,
+        shareUrl: sessionInfo?.share?.url,
       })
 
       onLoadComplete?.()

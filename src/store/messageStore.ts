@@ -51,6 +51,8 @@ export interface SessionState {
   hasMoreHistory: boolean
   /** session 目录 */
   directory: string
+  /** 分享链接 */
+  shareUrl?: string
 }
 
 type Subscriber = () => void
@@ -146,6 +148,10 @@ class MessageStore {
     return this.getCurrentSessionState()?.directory ?? ''
   }
 
+  getShareUrl(): string | undefined {
+    return this.getCurrentSessionState()?.shareUrl
+  }
+
   // ============================================
   // Session Management
   // ============================================
@@ -174,6 +180,7 @@ class MessageStore {
         prependedCount: 0,
         hasMoreHistory: false,
         directory: '',
+        shareUrl: undefined,
       }
       this.sessions.set(sessionId, state)
     }
@@ -199,6 +206,7 @@ class MessageStore {
       directory?: string
       hasMoreHistory?: boolean
       revertState?: ApiSession['revert'] | null
+      shareUrl?: string
     }
   ) {
     const state = this.ensureSession(sessionId)
@@ -209,6 +217,7 @@ class MessageStore {
     state.prependedCount = 0
     state.hasMoreHistory = options?.hasMoreHistory ?? false
     state.directory = options?.directory ?? ''
+    state.shareUrl = options?.shareUrl
 
     // 处理 revert 状态
     if (options?.revertState?.messageID) {
@@ -271,6 +280,14 @@ class MessageStore {
    */
   clearSession(sessionId: string) {
     this.sessions.delete(sessionId)
+    this.notify()
+  }
+
+  setShareUrl(sessionId: string, url: string | undefined) {
+    const state = this.sessions.get(sessionId)
+    if (!state) return
+
+    state.shareUrl = url
     this.notify()
   }
 
@@ -612,6 +629,7 @@ export interface MessageStoreSnapshot {
   prependedCount: number
   hasMoreHistory: boolean
   sessionDirectory: string
+  shareUrl: string | undefined
   canUndo: boolean
   canRedo: boolean
   redoSteps: number
@@ -630,6 +648,7 @@ function createSnapshot(): MessageStoreSnapshot {
     prependedCount: messageStore.getPrependedCount(),
     hasMoreHistory: messageStore.getHasMoreHistory(),
     sessionDirectory: messageStore.getSessionDirectory(),
+    shareUrl: messageStore.getShareUrl(),
     canUndo: messageStore.canUndo(),
     canRedo: messageStore.canRedo(),
     redoSteps: messageStore.getRedoSteps(),

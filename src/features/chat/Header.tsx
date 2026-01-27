@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { ComposeIcon, CogIcon, MoreHorizontalIcon, TeachIcon, SidebarIcon, MaximizeIcon, MinimizeIcon, SunIcon, MoonIcon, SystemIcon } from '../../components/Icons'
+import { ComposeIcon, CogIcon, MoreHorizontalIcon, TeachIcon, SidebarIcon, MaximizeIcon, MinimizeIcon, SunIcon, MoonIcon, SystemIcon, ShareIcon } from '../../components/Icons'
 import { DropdownMenu, MenuItem, IconButton } from '../../components/ui'
 import { ModelSelector } from './ModelSelector'
 import { SettingsDialog } from '../settings/SettingsDialog'
+import { ShareDialog } from './ShareDialog'
+import { useMessageStore } from '../../store'
 import type { ThemeMode } from '../../hooks'
 import type { ModelInfo } from '../../api'
 
@@ -31,8 +33,10 @@ export function Header({
   isWideMode,
   onToggleWideMode,
 }: HeaderProps) {
+  const { shareUrl } = useMessageStore()
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const settingsTriggerRef = useRef<HTMLButtonElement>(null)
   const settingsMenuRef = useRef<HTMLDivElement>(null)
 
@@ -137,6 +141,15 @@ export function Header({
               <div className="my-1 border-t border-border-200/50" />
               
               <MenuItem
+                icon={<ShareIcon />}
+                label={shareUrl ? "Share Settings" : "Share Chat"}
+                onClick={() => {
+                  setSettingsMenuOpen(false)
+                  setShareDialogOpen(true)
+                }}
+              />
+
+              <MenuItem
                 icon={<CogIcon />}
                 label="Settings"
                 onClick={() => {
@@ -164,6 +177,11 @@ export function Header({
         onThemeChange={onThemeChange}
         isWideMode={isWideMode}
         onToggleWideMode={onToggleWideMode}
+      />
+
+      <ShareDialog 
+        isOpen={shareDialogOpen} 
+        onClose={() => setShareDialogOpen(false)} 
       />
     </div>
   )

@@ -146,3 +146,27 @@ export async function unrevertSession(sessionId: string, directory?: string): Pr
 
   return response.json()
 }
+
+export async function shareSession(sessionId: string, directory?: string): Promise<ApiSession> {
+  const response = await fetch(buildUrl(`/session/${sessionId}/share`, directory), {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to share session: ${response.status}`)
+  }
+
+  return response.json()
+}
+
+export async function unshareSession(sessionId: string, directory?: string): Promise<ApiSession> {
+  const response = await fetch(buildUrl(`/session/${sessionId}/share`, directory), {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to unshare session: ${response.status}`)
+  }
+
+  return response.json()
+}
