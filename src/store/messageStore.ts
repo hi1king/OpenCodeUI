@@ -8,12 +8,13 @@
 // 3. SSE 更新直接修改对应 session 的消息
 // 4. 使用发布-订阅模式通知 React 组件更新
 
-import type { Message, Part, MessageInfo } from '../types/message'
+import type { Message, Part, MessageInfo, FilePart, AgentPart } from '../types/message'
 import type { 
   ApiMessageWithParts, 
   ApiMessage, 
   ApiPart,
   ApiSession,
+  Attachment,
 } from '../api/types'
 
 // ============================================
@@ -227,7 +228,7 @@ class MessageStore {
               return {
                 messageId: m.info.id,
                 text: this.extractUserText(m),
-                attachments: [], // TODO: 提取附件
+                attachments: this.extractUserAttachments(m),
                 model: userInfo.model,
                 variant: userInfo.variant,
               }
@@ -551,6 +552,45 @@ class MessageStore {
       .filter((p): p is Part & { type: 'text' } => p.type === 'text')
       .map(p => p.text)
       .join('\n')
+  }
+
+  private extractUserAttachments(message: Message): Attachment[] {
+    const attachments: Attachment[] = []
+    
+    for (const part of message.parts) {
+      if (part.type === 'file') {
+        const fp = part as FilePart
+        const isFolder = fp.mime === 'application/x-directory'
+        attachments.push({
+          id: fp.id || crypto.randomUUID(),
+          type: isFolder ? 'folder' : 'file',
+          displayName: fp.filename || fp.source?.path || 'file',
+          url: fp.url,
+          mime: fp.mime,
+          relativePath: fp.source?.path,
+          textRange: fp.source?.text ? {
+            value: fp.source.text.value,
+            start: fp.source.text.start,
+            end: fp.source.text.end,
+          } : undefined,
+        })
+      } else if (part.type === 'agent') {
+        const ap = part as AgentPart
+        attachments.push({
+          id: ap.id || crypto.randomUUID(),
+          type: 'agent',
+          displayName: ap.name,
+          agentName: ap.name,
+          textRange: ap.source ? {
+            value: ap.source.value,
+            start: ap.source.start,
+            end: ap.source.end,
+          } : undefined,
+        })
+      }
+    }
+    
+    return attachments
   }
 }
 
