@@ -118,8 +118,33 @@ export function useSmoothStream(
     const animate = (time: number) => {
       const elapsed = time - lastTimeRef.current
       
-      if (elapsed >= charDelay) {
-        const charsToAdd = Math.max(1, Math.floor(elapsed / charDelay))
+      // 计算落后了多少字符
+      const lag = fullText.length - displayIndex
+      
+      // 动态调速：落后越多，速度越快
+      // - lag < 50: 正常速度 (charDelay)
+      // - lag 50-150: 加速 (charDelay / 2)
+      // - lag 150-300: 快速 (charDelay / 4)
+      // - lag > 300: 直接追上
+      let effectiveDelay = charDelay
+      let charsPerFrame = 1
+      
+      if (lag > 300) {
+        // 落后太多，直接追上
+        setDisplayIndex(fullText.length)
+        lastTimeRef.current = time
+        frameRef.current = requestAnimationFrame(animate)
+        return
+      } else if (lag > 150) {
+        effectiveDelay = charDelay / 4
+        charsPerFrame = 4
+      } else if (lag > 50) {
+        effectiveDelay = charDelay / 2
+        charsPerFrame = 2
+      }
+      
+      if (elapsed >= effectiveDelay) {
+        const charsToAdd = Math.max(charsPerFrame, Math.floor(elapsed / effectiveDelay) * charsPerFrame)
         
         setDisplayIndex(prev => {
           const next = Math.min(prev + charsToAdd, fullText.length)
