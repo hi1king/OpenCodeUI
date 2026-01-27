@@ -252,7 +252,18 @@ class MessageStore {
     const lastMsg = state.messages[state.messages.length - 1]
     if (lastMsg?.info.role === 'assistant') {
       const assistantInfo = lastMsg.info as { time?: { completed?: number } }
-      state.isStreaming = !assistantInfo.time?.completed
+      const isLastMsgStreaming = !assistantInfo.time?.completed
+      state.isStreaming = isLastMsgStreaming
+      
+      // 关键：如果正在 streaming，需要把最后一条消息的 isStreaming 也设为 true
+      // 这样 TextPartView 才能正确启用打字机效果
+      if (isLastMsgStreaming && state.messages.length > 0) {
+        const lastIndex = state.messages.length - 1
+        state.messages[lastIndex] = {
+          ...state.messages[lastIndex],
+          isStreaming: true,
+        }
+      }
     } else {
       state.isStreaming = false
     }

@@ -35,10 +35,10 @@ export function useSmoothStream(
   const { charDelay = 8 } = options
 
   // 当前显示的字符索引
-  const [displayIndex, setDisplayIndex] = useState(() => {
-    // 关键：初始化时如果不是 streaming，直接显示全部
-    return isStreaming ? 0 : fullText.length
-  })
+  // 初始化时从当前 fullText 长度开始，这样：
+  // - 刷新页面后已加载的内容直接显示
+  // - 新推送的内容会触发动画（因为 fullText 增长了但 displayIndex 还在旧位置）
+  const [displayIndex, setDisplayIndex] = useState(fullText.length)
   
   // Refs for animation control
   const frameRef = useRef<number | null>(null)
@@ -48,20 +48,34 @@ export function useSmoothStream(
   const wasStreamingRef = useRef(isStreaming)
   // 追踪上一次的文本内容，用于检测内容重置
   const prevTextRef = useRef(fullText)
+  // 标记是否是组件首次渲染
+  const isFirstRenderRef = useRef(true)
 
   // 检测内容重置（新对话/切换 session）
   useEffect(() => {
+    // 跳过首次渲染，因为初始化时已经设置了 displayIndex
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false
+      prevTextRef.current = fullText
+      return
+    }
+    
     const prevText = prevTextRef.current
     
-    // 如果文本完全不同（不是追加），说明是新内容
-    // 判断标准：新文本不是以旧文本开头，且长度差异大
+    // 如果文本完全不同（不是追加），说明是新内容（切换 session）
     const isNewContent = fullText.length > 0 && 
                          prevText.length > 0 && 
                          !fullText.startsWith(prevText.slice(0, Math.min(prevText.length, 20)))
     
+    // 如果之前是空的，现在有内容了（新对话开始）
+    const isNewConversation = prevText.length === 0 && fullText.length > 0
+    
     if (isNewContent) {
-      // 新内容，如果是 streaming 就从头开始动画，否则直接显示全部
-      setDisplayIndex(isStreaming ? 0 : fullText.length)
+      // 切换到新 session，直接显示全部（不做动画）
+      setDisplayIndex(fullText.length)
+    } else if (isNewConversation && isStreaming) {
+      // 新对话开始，从 0 开始动画
+      setDisplayIndex(0)
     }
     
     prevTextRef.current = fullText
