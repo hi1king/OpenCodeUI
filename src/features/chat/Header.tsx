@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { NewChatIcon, MenuDotsIcon, SunIcon, MoonIcon, SystemIcon, SidebarIcon, MaximizeIcon, MinimizeIcon } from '../../components/Icons'
+import { ComposeIcon, MenuDotsIcon, SunIcon, MoonIcon, SystemIcon, SidebarIcon, MaximizeIcon, MinimizeIcon } from '../../components/Icons'
 import { DropdownMenu, MenuItem, IconButton } from '../../components/ui'
 import { ModelSelector } from './ModelSelector'
 import type { ThemeMode } from '../../hooks'
@@ -91,7 +91,7 @@ export function Header({
           size="sm"
           className="hover:bg-bg-200/50"
         >
-          <NewChatIcon />
+          <ComposeIcon size={18} />
         </IconButton>
 
         {/* Settings Button */}

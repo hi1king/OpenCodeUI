@@ -410,7 +410,7 @@ function App() {
                 modelsLoading={modelsLoading}
                 selectedModelKey={selectedModelKey}
                 onModelChange={handleModelChange}
-                onNewChat={handleNewChat}
+                onNewChat={handleNewSession}
                 onToggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
                 themeMode={themeMode}
                 onThemeChange={setTheme}
