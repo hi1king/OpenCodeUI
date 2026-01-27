@@ -3,13 +3,15 @@
 // ============================================
 
 import type { ModelInfo } from '../api'
+import { getModelKey } from './modelUtils'
 
 // ============================================
 // Model Selection 恢复
 // ============================================
 
 export interface ModelSelectionResult {
-  modelId: string | null
+  modelKey: string  // providerId:modelId 格式
+  model: ModelInfo
   variant: string | undefined
 }
 
@@ -25,21 +27,28 @@ export function restoreModelSelection(
     return null
   }
   
-  const modelExists = models.some(m => m.id === lastModel.modelID)
-  if (!modelExists) {
+  // 优先精确匹配 providerId + modelId
+  let model = models.find(m => 
+    m.providerId === lastModel.providerID && m.id === lastModel.modelID
+  )
+  
+  // 如果精确匹配失败，尝试只匹配 modelID（向后兼容）
+  if (!model) {
+    model = models.find(m => m.id === lastModel.modelID)
+  }
+  
+  if (!model) {
     return null
   }
   
   let variant: string | undefined = undefined
-  if (lastVariant) {
-    const model = models.find(m => m.id === lastModel.modelID)
-    if (model && model.variants.includes(lastVariant)) {
-      variant = lastVariant
-    }
+  if (lastVariant && model.variants.includes(lastVariant)) {
+    variant = lastVariant
   }
   
   return {
-    modelId: lastModel.modelID,
+    modelKey: getModelKey(model),
+    model,
     variant
   }
 }

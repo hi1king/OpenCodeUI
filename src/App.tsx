@@ -8,9 +8,10 @@ import {
   getSelectableAgents, 
   getPendingPermissions, getPendingQuestions, 
   type ApiSession,
-  type ApiAgent, type Attachment, 
+  type ApiAgent, type Attachment, type ModelInfo,
 } from './api'
 import { restoreModelSelection, createErrorHandler } from './utils'
+import { getModelKey, findModelByKey, saveModelVariantPref, getModelVariantPref } from './utils/modelUtils'
 
 const handleError = createErrorHandler('session')
 
@@ -32,8 +33,8 @@ function App() {
   // ============================================
   // UI State
   // ============================================
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(() => {
-    return localStorage.getItem('selected-model-id')
+  const [selectedModelKey, setSelectedModelKey] = useState<string | null>(() => {
+    return localStorage.getItem('selected-model-key')
   })
   const [agents, setAgents] = useState<ApiAgent[]>([])
   const [selectedAgent, setSelectedAgent] = useState<string>('build')
@@ -142,21 +143,54 @@ function App() {
   }, [routeSessionId, isStreaming, currentDirectory, refreshPendingRequests])
 
   // Model 自动选择
-  const handleModelChange = useCallback((modelId: string) => {
-    setSelectedModelId(modelId)
-    localStorage.setItem('selected-model-id', modelId)
-    setSelectedVariant(undefined)
-  }, [])
+  const handleModelChange = useCallback((modelKey: string, _model: ModelInfo) => {
+    // 先保存当前模型的 variant 偏好
+    if (selectedModelKey && selectedVariant) {
+      saveModelVariantPref(selectedModelKey, selectedVariant)
+    }
+    
+    // 切换模型
+    setSelectedModelKey(modelKey)
+    localStorage.setItem('selected-model-key', modelKey)
+    
+    // 恢复新模型的 variant 偏好
+    const savedVariant = getModelVariantPref(modelKey)
+    setSelectedVariant(savedVariant)
+  }, [selectedModelKey, selectedVariant])
+
+  // Variant 变化时保存偏好
+  const handleVariantChange = useCallback((variant: string | undefined) => {
+    setSelectedVariant(variant)
+    if (selectedModelKey) {
+      saveModelVariantPref(selectedModelKey, variant)
+    }
+  }, [selectedModelKey])
+
+  // 初始化时恢复 variant 偏好
+  useEffect(() => {
+    if (selectedModelKey && selectedVariant === undefined) {
+      const savedVariant = getModelVariantPref(selectedModelKey)
+      if (savedVariant) {
+        setSelectedVariant(savedVariant)
+      }
+    }
+  }, [selectedModelKey])
 
   useEffect(() => {
     if (models.length === 0) return
-    if (selectedModelId) {
-      const exists = models.some(m => m.id === selectedModelId)
-      if (!exists) handleModelChange(models[0].id)
+    if (selectedModelKey) {
+      const exists = findModelByKey(models, selectedModelKey)
+      if (!exists) {
+        // 如果当前选中的模型不存在，选择第一个
+        const firstModel = models[0]
+        handleModelChange(getModelKey(firstModel), firstModel)
+      }
     } else {
-      handleModelChange(models[0].id)
+      // 没有选中模型时，选择第一个
+      const firstModel = models[0]
+      handleModelChange(getModelKey(firstModel), firstModel)
     }
-  }, [models, selectedModelId, handleModelChange])
+  }, [models, selectedModelKey, handleModelChange])
 
   // 加载 agents
   useEffect(() => {
@@ -191,7 +225,7 @@ function App() {
         models
       )
       if (modelSelection) {
-        setSelectedModelId(modelSelection.modelId)
+        setSelectedModelKey(modelSelection.modelKey)
         setSelectedVariant(modelSelection.variant)
         return // 优先满足
       }
@@ -209,7 +243,7 @@ function App() {
         models
       )
       if (modelSelection) {
-        setSelectedModelId(modelSelection.modelId)
+        setSelectedModelKey(modelSelection.modelKey)
         setSelectedVariant(modelSelection.variant)
       }
     }
@@ -224,7 +258,7 @@ function App() {
     attachments: Attachment[],
     options?: { agent?: string; variant?: string }
   ) => {
-    const currentModel = models.find(m => m.id === selectedModelId)
+    const currentModel = selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined
     if (!currentModel) {
       console.error('No model selected')
       return
@@ -272,7 +306,7 @@ function App() {
         messageStore.setStreaming(sessionId, false)
       }
     }
-  }, [models, selectedModelId, routeSessionId, currentDirectory, navigateToSession, createSession, clearRevert])
+  }, [models, selectedModelKey, routeSessionId, currentDirectory, navigateToSession, createSession, clearRevert])
 
   const handleNewChat = useCallback(() => {
     if (routeSessionId) {
@@ -363,7 +397,7 @@ function App() {
               <Header
                 models={models}
                 modelsLoading={modelsLoading}
-                selectedModelId={selectedModelId}
+                selectedModelKey={selectedModelKey}
                 onModelChange={handleModelChange}
                 onNewChat={handleNewChat}
                 onToggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
@@ -396,10 +430,10 @@ function App() {
               agents={agents}
               selectedAgent={selectedAgent}
               onAgentChange={setSelectedAgent}
-              variants={models.find(m => m.id === selectedModelId)?.variants ?? []}
+              variants={(selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined)?.variants ?? []}
               selectedVariant={selectedVariant}
-              onVariantChange={setSelectedVariant}
-              supportsImages={models.find(m => m.id === selectedModelId)?.supportsImages ?? false}
+              onVariantChange={handleVariantChange}
+              supportsImages={(selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined)?.supportsImages ?? false}
               rootPath={sessionDirectory}
               revertedText={revertedMessage?.text}
               revertedAttachments={revertedMessage?.attachments}
