@@ -39,6 +39,7 @@ export const ModelSelector = memo(function ModelSelector({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const ignoreMouseRef = useRef(false) // 防止打开时鼠标位置干扰初始高亮
+  const lastMousePosRef = useRef({ x: 0, y: 0 })
 
   // 移除打开时的强制刷新，避免闪烁
   // useEffect(() => {
@@ -167,6 +168,9 @@ export const ModelSelector = memo(function ModelSelector({
   }, [isOpen]) // 只在打开时触发滚动，键盘导航有自己的滚动逻辑
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // 阻止冒泡，防止 input 和外层 div 重复触发导致跳步
+    e.stopPropagation()
+    
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
@@ -267,15 +271,22 @@ export const ModelSelector = memo(function ModelSelector({
                       <div
                         id={`list-item-${index}`}
                         onClick={() => handleSelect(model)}
-                    onMouseMove={() => {
-                      if (ignoreMouseRef.current) return
-                      const hIndex = itemIndices.indexOf(index)
-                      if (hIndex !== -1 && hIndex !== highlightedIndex) {
-                        setHighlightedIndex(hIndex)
-                      }
-                    }}
-                    className={`
-                      group flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm font-sans transition-colors mt-0.5
+                        onMouseMove={(e) => {
+                          if (ignoreMouseRef.current) return
+                          
+                          // Prevent highlight jump when scrolling via keyboard
+                          if (e.clientX === lastMousePosRef.current.x && e.clientY === lastMousePosRef.current.y) {
+                            return
+                          }
+                          lastMousePosRef.current = { x: e.clientX, y: e.clientY }
+
+                          const hIndex = itemIndices.indexOf(index)
+                          if (hIndex !== -1 && hIndex !== highlightedIndex) {
+                            setHighlightedIndex(hIndex)
+                          }
+                        }}
+                        className={`
+                          scroll-mt-8 group flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm font-sans transition-colors mt-0.5
                       ${isSelected ? 'bg-accent-main-100/10 text-accent-main-100' : 'text-text-200'}
                       ${isCurrentlyHighlighted && !isSelected ? 'bg-bg-200/60 text-text-100' : ''}
                     `}
