@@ -127,7 +127,7 @@ export const ToolPartView = memo(function ToolPartView({ part, isFirst = false, 
           expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
         }`}>
           <div className="overflow-hidden">
-            <div className="pt-3 pb-3 pl-3 pr-10">
+            <div className="p-3">
               <ToolBody part={part} />
             </div>
           </div>

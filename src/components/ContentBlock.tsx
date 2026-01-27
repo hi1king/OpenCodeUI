@@ -265,12 +265,24 @@ const DiffRenderer = memo(function DiffRenderer({ before, after, unifiedDiff, la
   
   useEffect(() => {
     if (unifiedDiff) {
-      // 简单的提取逻辑，用于高亮
+      // 提取 before/after 用于语法高亮
+      // 必须跳过 diff header 行，否则 tokens 索引会错位
       let b = '', a = ''
       const lines = unifiedDiff.split('\n')
       for (const line of lines) {
-        if (line.startsWith(' ') || line.startsWith('-')) b += line.slice(1) + '\n'
-        if (line.startsWith(' ') || line.startsWith('+')) a += line.slice(1) + '\n'
+        // 跳过 diff header 行
+        if (line.startsWith('---') || line.startsWith('+++') || 
+            line.startsWith('Index:') || line.startsWith('===') ||
+            line.startsWith('@@') || line.startsWith('\\ No newline')) {
+          continue
+        }
+        // 只处理实际的 diff 内容行
+        if (line.startsWith('-')) b += line.slice(1) + '\n'
+        else if (line.startsWith('+')) a += line.slice(1) + '\n'
+        else if (line.startsWith(' ')) {
+          b += line.slice(1) + '\n'
+          a += line.slice(1) + '\n'
+        }
       }
       setUnifiedParts({ before: b, after: a })
     }
