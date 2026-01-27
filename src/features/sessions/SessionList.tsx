@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { SearchIcon, PencilIcon, TrashIcon } from '../../components/Icons'
+import { formatRelativeTime } from '../../utils/dateUtils'
 import type { ApiSession } from '../../api'
 
 interface SessionListProps {
@@ -252,36 +253,68 @@ function SessionItem({ session, isSelected, onSelect, onDelete, onRename }: Sess
   return (
     <div
       onClick={onSelect}
-      className={`group relative flex items-center px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 border border-transparent ${
+      className={`group relative flex items-start px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 border border-transparent ${
         isSelected
-          ? 'bg-bg-000 shadow-sm text-text-100 font-medium ring-1 ring-border-200/50' 
-          : 'text-text-400 hover:bg-bg-200/50 hover:text-text-200'
+          ? 'bg-bg-000 shadow-sm ring-1 ring-border-200/50' 
+          : 'hover:bg-bg-200/50'
       }`}
     >
-      <div className="flex-1 min-w-0 pr-6">
-        <p className="text-sm truncate leading-relaxed">
-          {session.title || 'Untitled Chat'}
-        </p>
-      </div>
-      
-      {/* Actions (Rename/Delete) - only show on hover */}
-      <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 transition-opacity ${
-        isSelected ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100'
-      }`}>
-        <button
-          onClick={handleStartEdit}
-          className="p-1 rounded-md hover:bg-bg-200 text-text-400 hover:text-text-100"
-          title="Rename"
-        >
-          <PencilIcon className="w-3 h-3" />
-        </button>
-        <button
-          onClick={handleDelete}
-          className="p-1 rounded-md hover:bg-bg-200 text-text-400 hover:text-danger-100"
-          title="Delete"
-        >
-          <TrashIcon className="w-3 h-3" />
-        </button>
+      <div className="flex-1 min-w-0 pr-1">
+        {/* Row 1: Title + Time/Actions */}
+        <div className="flex items-start justify-between gap-2 h-5">
+          <p 
+            className={`text-sm truncate font-medium flex-1 ${isSelected ? 'text-text-100' : 'text-text-200 group-hover:text-text-100'}`}
+            title={session.title || 'Untitled Chat'}
+          >
+            {session.title || 'Untitled Chat'}
+          </p>
+          
+          <div className="relative flex-shrink-0 flex justify-end min-w-[60px]">
+            {/* Time: Hidden on hover */}
+            {session.time?.updated && (
+              <span className="text-[10px] text-text-400 opacity-60 transition-opacity duration-200 absolute right-0 top-0.5 group-hover:opacity-0">
+                {formatRelativeTime(session.time.updated)}
+              </span>
+            )}
+            
+            {/* Actions: Visible ONLY on hover */}
+            <div className="flex items-center gap-1 transition-all duration-200 z-10 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+              <button
+                onClick={handleStartEdit}
+                className="p-1.5 rounded-md hover:bg-bg-300 text-text-400 hover:text-text-100 transition-colors focus:outline-none focus:ring-1 focus:ring-accent-main-100/50"
+                title="Rename"
+              >
+                <PencilIcon className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-1.5 rounded-md hover:bg-danger-bg text-text-400 hover:text-danger-100 transition-colors focus:outline-none focus:ring-1 focus:ring-danger-100/50"
+                title="Delete"
+              >
+                <TrashIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Stats / Placeholder */}
+        <div className="flex items-center gap-2 mt-1.5 h-4">
+          {session.summary ? (
+            <div className="flex items-center gap-2 text-[10px] font-mono opacity-80">
+              {session.summary.additions > 0 && (
+                <span className="text-success-100 bg-success-100/10 px-1 rounded">+{session.summary.additions}</span>
+              )}
+              {session.summary.deletions > 0 && (
+                <span className="text-danger-100 bg-danger-100/10 px-1 rounded">-{session.summary.deletions}</span>
+              )}
+              {session.summary.files > 0 && (
+                <span className="text-text-400">{session.summary.files} {session.summary.files === 1 ? 'file' : 'files'}</span>
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px] text-text-400/40 italic">No changes</span>
+          )}
+        </div>
       </div>
     </div>
   )
