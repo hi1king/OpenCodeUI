@@ -15,6 +15,7 @@ interface ChatAreaProps {
   onUndo?: (userMessageId: string) => void
   canUndo?: boolean
   registerMessage?: (id: string, element: HTMLElement | null) => void
+  isWideMode?: boolean
 }
 
 export type ChatAreaHandle = {
@@ -57,6 +58,7 @@ export const ChatArea = memo(forwardRef<ChatAreaHandle, ChatAreaProps>(({
   onUndo,
   canUndo,
   registerMessage,
+  isWideMode = false,
 }, ref) => {
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   // 外部滚动容器
@@ -158,8 +160,10 @@ export const ChatArea = memo(forwardRef<ChatAreaHandle, ChatAreaProps>(({
       registerMessage?.(msg.info.id, el)
     }
     
+    const maxWidthClass = isWideMode ? 'max-w-[95%] xl:max-w-6xl' : 'max-w-2xl'
+
     return (
-      <div ref={handleRef} className="w-full max-w-3xl mx-auto px-4 py-3">
+      <div ref={handleRef} className={`w-full ${maxWidthClass} mx-auto px-4 py-3 transition-[max-width] duration-300 ease-in-out`}>
         <div className={`flex ${msg.info.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`min-w-0 group ${msg.info.role === 'assistant' ? 'w-full' : ''}`}>
             <MessageRenderer 
@@ -171,7 +175,7 @@ export const ChatArea = memo(forwardRef<ChatAreaHandle, ChatAreaProps>(({
         </div>
       </div>
     )
-  }, [registerMessage, onUndo, canUndo])
+  }, [registerMessage, onUndo, canUndo, isWideMode])
 
   return (
     <div className="h-full overflow-hidden">

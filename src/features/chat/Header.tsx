@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { NewChatIcon, MenuDotsIcon, SunIcon, MoonIcon, SystemIcon, SidebarIcon } from '../../components/Icons'
+import { NewChatIcon, MenuDotsIcon, SunIcon, MoonIcon, SystemIcon, SidebarIcon, MaximizeIcon, MinimizeIcon } from '../../components/Icons'
 import { DropdownMenu, MenuItem, IconButton } from '../../components/ui'
 import { ModelSelector } from './ModelSelector'
 import type { ThemeMode } from '../../hooks'
@@ -14,6 +14,8 @@ interface HeaderProps {
   onToggleSidebar: () => void
   themeMode: ThemeMode
   onThemeChange: (mode: ThemeMode) => void
+  isWideMode?: boolean
+  onToggleWideMode?: () => void
 }
 
 export function Header({
@@ -25,6 +27,8 @@ export function Header({
   onToggleSidebar,
   themeMode,
   onThemeChange,
+  isWideMode,
+  onToggleWideMode,
 }: HeaderProps) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
   const settingsTriggerRef = useRef<HTMLButtonElement>(null)
@@ -68,6 +72,18 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-1 pointer-events-auto">
+        {/* Wide Mode Toggle */}
+        {onToggleWideMode && (
+          <IconButton
+            aria-label={isWideMode ? "Standard width" : "Wide mode"}
+            onClick={onToggleWideMode}
+            size="sm"
+            className="hover:bg-bg-200/50 hidden sm:flex text-text-400 hover:text-text-100"
+          >
+            {isWideMode ? <MinimizeIcon /> : <MaximizeIcon />}
+          </IconButton>
+        )}
+
         {/* New Chat Button */}
         <IconButton
           aria-label="New chat"

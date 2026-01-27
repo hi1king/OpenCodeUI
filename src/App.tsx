@@ -39,6 +39,17 @@ function App() {
   const [agents, setAgents] = useState<ApiAgent[]>([])
   const [selectedAgent, setSelectedAgent] = useState<string>('build')
   const [selectedVariant, setSelectedVariant] = useState<string | undefined>(undefined)
+  const [isWideMode, setIsWideMode] = useState(() => {
+    return localStorage.getItem('chat-wide-mode') === 'true'
+  })
+
+  const toggleWideMode = useCallback(() => {
+    setIsWideMode(prev => {
+      const next = !prev
+      localStorage.setItem('chat-wide-mode', String(next))
+      return next
+    })
+  }, [])
 
   // ============================================
   // Refs
@@ -403,22 +414,25 @@ function App() {
                 onToggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
                 themeMode={themeMode}
                 onThemeChange={setTheme}
+                isWideMode={isWideMode}
+                onToggleWideMode={toggleWideMode}
               />
             </div>
           </div>
 
           {/* Scrollable Area */}
           <div className="absolute inset-0">
-            <ChatArea 
-              ref={chatAreaRef} 
-              messages={messages} 
-              prependedCount={prependedCount}
-              onLoadMore={loadMoreHistory}
-              onUndo={handleUndoWithAnimation}
-              canUndo={canUndo}
-              registerMessage={registerMessage}
-            />
-          </div>
+              <ChatArea 
+                ref={chatAreaRef} 
+                messages={messages} 
+                prependedCount={prependedCount}
+                onLoadMore={loadMoreHistory}
+                onUndo={handleUndoWithAnimation}
+                canUndo={canUndo}
+                registerMessage={registerMessage}
+                isWideMode={isWideMode}
+              />
+            </div>
 
           {/* Floating Input Box */}
           <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
@@ -446,8 +460,6 @@ function App() {
             />
           </div>
         </div>
-        
-        {/* Permission Dialog */}
         {pendingPermissionRequests.length > 0 && (
           <PermissionDialog
             request={pendingPermissionRequests[0]}
