@@ -2,7 +2,7 @@
 // Store Exports
 // ============================================
 
-export { messageStore, useMessageStore } from './messageStore'
+export { messageStore, useMessageStore, useSessionState } from './messageStore'
 export type { 
   SessionState, 
   RevertState, 
@@ -11,3 +11,5 @@ export type {
 
 export { childSessionStore, useChildSessions, useSessionFamily } from './childSessionStore'
 export type { ChildSessionInfo } from './childSessionStore'
+
+export { layoutStore, useLayoutStore } from './layoutStore'

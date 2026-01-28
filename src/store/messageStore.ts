@@ -689,8 +689,52 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * React hook to subscribe to message store
+ * (Global / Current Session)
  */
 export function useMessageStore(): MessageStoreSnapshot {
+  return useSyncExternalStore(
+    (onStoreChange) => messageStore.subscribe(onStoreChange),
+    getSnapshot,
+    getSnapshot
+  )
+}
+
+// 缓存：sessionId -> Snapshot
+const sessionSnapshots = new Map<string, any>()
+
+// 订阅 store 变化，清除相关缓存
+messageStore.subscribe(() => {
+  sessionSnapshots.clear()
+})
+
+/**
+ * React hook to subscribe to a SPECIFIC session state
+ */
+export function useSessionState(sessionId: string | null) {
+  const getSnapshot = () => {
+    if (!sessionId) return null
+    
+    // 如果缓存中有，直接返回
+    if (sessionSnapshots.has(sessionId)) {
+      return sessionSnapshots.get(sessionId)
+    }
+    
+    const state = messageStore.getSessionState(sessionId)
+    if (!state) return null
+    
+    // 构建 snapshot 并缓存
+    const snapshot = {
+      messages: state.messages,
+      isStreaming: state.isStreaming,
+      loadState: state.loadState,
+      revertState: state.revertState,
+      canUndo: state.messages.some(m => m.info.role === 'user' && !state.isStreaming),
+    }
+    
+    sessionSnapshots.set(sessionId, snapshot)
+    return snapshot
+  }
+
   return useSyncExternalStore(
     (onStoreChange) => messageStore.subscribe(onStoreChange),
     getSnapshot,

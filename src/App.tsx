@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Header, InputBox, PermissionDialog, QuestionDialog, Sidebar, ChatArea, type ChatAreaHandle } from './features/chat'
-import { useMessageStore, messageStore, useSessionFamily } from './store'
+import { FloatingPanel } from './features/chat/FloatingPanel'
+import { useMessageStore, messageStore, useSessionFamily, useLayoutStore } from './store'
 import { useSessionManager, useGlobalEvents } from './hooks'
 import { usePermissions, useTheme, useModels, useRouter, usePermissionHandler, useMessageAnimation, useDirectory, useSessionContext } from './hooks'
 import { 
@@ -29,6 +30,9 @@ function App() {
     redoSteps,
     revertedContent,
   } = useMessageStore()
+  
+  // 保持 useLayoutStore 订阅以确保浮动面板更新触发重渲染
+  useLayoutStore()
   
   // ============================================
   // UI State
@@ -403,89 +407,95 @@ function App() {
         onClose={() => setSidebarExpanded(false)}
       />
 
-      {/* Main Content - 移除独立背景色，共享父容器背景 */}
-      <div className="flex-1 flex flex-col h-screen relative overflow-hidden transition-all duration-300">
-        <div className="flex-1 relative overflow-hidden flex flex-col">
-          {/* Header Overlay - 增加顶部内边距或调整 z-index 确保与侧边栏协调 */}
-          <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
-            <div className="pointer-events-auto">
-              <Header
-                models={models}
-                modelsLoading={modelsLoading}
-                selectedModelKey={selectedModelKey}
-                onModelChange={handleModelChange}
-                onNewChat={handleNewSession}
-                onToggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
-                themeMode={themeMode}
-                onThemeChange={setThemeWithAnimation}
-                isWideMode={isWideMode}
-                onToggleWideMode={toggleWideMode}
-              />
+      {/* Main Content Area Wrapper */}
+      <div className="flex-1 flex min-w-0 h-screen overflow-hidden">
+        {/* Main Chat Column */}
+        <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300">
+          <div className="flex-1 relative overflow-hidden flex flex-col">
+            {/* Header Overlay - 增加顶部内边距或调整 z-index 确保与侧边栏协调 */}
+            <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+              <div className="pointer-events-auto">
+                <Header
+                  models={models}
+                  modelsLoading={modelsLoading}
+                  selectedModelKey={selectedModelKey}
+                  onModelChange={handleModelChange}
+                  onNewChat={handleNewSession}
+                  onToggleSidebar={() => setSidebarExpanded(!sidebarExpanded)}
+                  themeMode={themeMode}
+                  onThemeChange={setThemeWithAnimation}
+                  isWideMode={isWideMode}
+                  onToggleWideMode={toggleWideMode}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Scrollable Area */}
-          <div className="absolute inset-0">
-              <ChatArea 
-                ref={chatAreaRef} 
-                messages={messages}
-                sessionId={routeSessionId}
+            {/* Scrollable Area */}
+            <div className="absolute inset-0">
+                <ChatArea 
+                  ref={chatAreaRef} 
+                  messages={messages}
+                  sessionId={routeSessionId}
+                  isStreaming={isStreaming}
+                  prependedCount={prependedCount}
+                  onLoadMore={loadMoreHistory}
+                  onUndo={handleUndoWithAnimation}
+                  canUndo={canUndo}
+                  registerMessage={registerMessage}
+                  isWideMode={isWideMode}
+                />
+              </div>
+
+            {/* Floating Input Box */}
+            <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
+              <InputBox 
+                onSend={handleSend} 
+                onAbort={handleAbort}
+                disabled={!isIdle}
                 isStreaming={isStreaming}
-                prependedCount={prependedCount}
-                onLoadMore={loadMoreHistory}
-                onUndo={handleUndoWithAnimation}
-                canUndo={canUndo}
-                registerMessage={registerMessage}
-                isWideMode={isWideMode}
+                agents={agents}
+                selectedAgent={selectedAgent}
+                onAgentChange={setSelectedAgent}
+                variants={(selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined)?.variants ?? []}
+                selectedVariant={selectedVariant}
+                onVariantChange={handleVariantChange}
+                supportsImages={(selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined)?.supportsImages ?? false}
+                rootPath={sessionDirectory}
+                revertedText={revertedMessage?.text}
+                revertedAttachments={revertedMessage?.attachments}
+                canRedo={canRedo}
+                revertSteps={redoSteps}
+                onRedo={handleRedoWithAnimation}
+                onRedoAll={handleRedoAll}
+                onClearRevert={clearRevert}
+                registerInputBox={registerInputBox}
               />
             </div>
-
-          {/* Floating Input Box */}
-          <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
-            <InputBox 
-              onSend={handleSend} 
-              onAbort={handleAbort}
-              disabled={!isIdle}
-              isStreaming={isStreaming}
-              agents={agents}
-              selectedAgent={selectedAgent}
-              onAgentChange={setSelectedAgent}
-              variants={(selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined)?.variants ?? []}
-              selectedVariant={selectedVariant}
-              onVariantChange={handleVariantChange}
-              supportsImages={(selectedModelKey ? findModelByKey(models, selectedModelKey) : undefined)?.supportsImages ?? false}
-              rootPath={sessionDirectory}
-              revertedText={revertedMessage?.text}
-              revertedAttachments={revertedMessage?.attachments}
-              canRedo={canRedo}
-              revertSteps={redoSteps}
-              onRedo={handleRedoWithAnimation}
-              onRedoAll={handleRedoAll}
-              onClearRevert={clearRevert}
-              registerInputBox={registerInputBox}
-            />
           </div>
-        </div>
-        {pendingPermissionRequests.length > 0 && (
-          <PermissionDialog
-            request={pendingPermissionRequests[0]}
-            onReply={(reply) => handlePermissionReply(pendingPermissionRequests[0].id, reply, currentDirectory)}
-            queueLength={pendingPermissionRequests.length}
-            isReplying={isReplying}
-            currentSessionId={routeSessionId}
-          />
-        )}
+          {pendingPermissionRequests.length > 0 && (
+            <PermissionDialog
+              request={pendingPermissionRequests[0]}
+              onReply={(reply) => handlePermissionReply(pendingPermissionRequests[0].id, reply, currentDirectory)}
+              queueLength={pendingPermissionRequests.length}
+              isReplying={isReplying}
+              currentSessionId={routeSessionId}
+            />
+          )}
 
-        {/* Question Dialog */}
-        {pendingPermissionRequests.length === 0 && pendingQuestionRequests.length > 0 && (
-          <QuestionDialog
-            request={pendingQuestionRequests[0]}
-            onReply={(answers) => handleQuestionReply(pendingQuestionRequests[0].id, answers, currentDirectory)}
-            onReject={() => handleQuestionReject(pendingQuestionRequests[0].id, currentDirectory)}
-            queueLength={pendingQuestionRequests.length}
-            isReplying={isReplying}
-          />
-        )}
+          {/* Question Dialog */}
+          {pendingPermissionRequests.length === 0 && pendingQuestionRequests.length > 0 && (
+            <QuestionDialog
+              request={pendingQuestionRequests[0]}
+              onReply={(answers) => handleQuestionReply(pendingQuestionRequests[0].id, answers, currentDirectory)}
+              onReject={() => handleQuestionReject(pendingQuestionRequests[0].id, currentDirectory)}
+              queueLength={pendingQuestionRequests.length}
+              isReplying={isReplying}
+            />
+          )}
+        </div>
+
+        {/* Floating Sub Session Panel */}
+        <FloatingPanel />
       </div>
     </div>
   )
