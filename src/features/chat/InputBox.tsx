@@ -413,25 +413,11 @@ export function InputBox({
     }
     
     // 2. 处理纯文本
-    const text = e.clipboardData.getData('text/plain')
-    if (text) {
-      if (!editorRef.current) return
-      
-      const selection = window.getSelection()
-      if (!selection || !selection.rangeCount) return
-      
-      const range = selection.getRangeAt(0)
-      if (!editorRef.current.contains(range.commonAncestorContainer)) return
-
-      range.deleteContents()
-      const textNode = document.createTextNode(text)
-      range.insertNode(textNode)
-      
-      range.setStartAfter(textNode)
-      range.setEndAfter(textNode)
-      selection.removeAllRanges()
-      selection.addRange(range)
-      
+    const pasteText = e.clipboardData.getData('text/plain')
+    if (pasteText) {
+      // 使用 insertText 命令，这样浏览器会正确记录 undo 历史
+      // 注意：execCommand 已被标记为 deprecated，但在 contentEditable 中仍是最可靠的方式
+      document.execCommand('insertText', false, pasteText)
       updateState()
     }
   }, [supportsImages, handleImageUpload, updateState])
