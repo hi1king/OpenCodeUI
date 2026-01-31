@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDownIcon } from '../../../../components/Icons'
+import { ChevronDownIcon, CheckIcon, ClockIcon, CloseIcon, CircleIcon } from '../../../../components/Icons'
 import type { ToolPart } from '../../../../types/message'
 import type { ToolRendererProps } from '../types'
 
@@ -104,13 +104,13 @@ function getTodoIcon(status: TodoItem['status']) {
   
   switch (status) {
     case 'completed':
-      return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={cls}><path d="M20 6L9 17l-5-5"/></svg>
+      return <CheckIcon size={size} className={cls} strokeWidth={2.5} />
     case 'in_progress':
-      return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cls}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      return <ClockIcon size={size} className={cls} />
     case 'cancelled':
-      return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cls}><path d="M18 6L6 18M6 6l12 12"/></svg>
+      return <CloseIcon size={size} className={cls} />
     default:
-      return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cls}><circle cx="12" cy="12" r="10"/></svg>
+      return <CircleIcon size={size} className={cls} />
   }
 }
 

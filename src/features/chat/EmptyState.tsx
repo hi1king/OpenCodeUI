@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { MessageSquareIcon, FolderIcon, ChevronDownIcon, NewChatIcon } from '../../components/Icons'
 import { getPath, type ApiProject, type ApiPath } from '../../api'
 import { handleError } from '../../utils'
 
@@ -83,7 +84,7 @@ export function EmptyState({
         {/* Logo / Icon */}
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-main-100 to-accent-main-200 flex items-center justify-center">
-            <ChatIcon className="w-8 h-8 text-white" />
+            <MessageSquareIcon className="w-8 h-8 text-white" />
           </div>
         </div>
 
@@ -137,7 +138,7 @@ export function EmptyState({
                   <FolderIcon className="w-4 h-4 text-text-400 flex-shrink-0" />
                   <span className="truncate">{currentDirectory || 'Select directory...'}</span>
                 </div>
-                <ChevronIcon className={`w-4 h-4 text-text-400 transition-transform flex-shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={`w-4 h-4 text-text-400 transition-transform flex-shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown */}
@@ -172,7 +173,7 @@ export function EmptyState({
                         onClick={handleCustomPath}
                         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-bg-200/50 transition-colors text-sm text-text-400"
                       >
-                        <EditIcon className="w-4 h-4 flex-shrink-0" />
+                        <NewChatIcon className="w-4 h-4 flex-shrink-0" />
                         <span>Enter custom path...</span>
                       </button>
                     </div>
@@ -201,70 +202,3 @@ export function EmptyState({
   )
 }
 
-// ============================================
-// Icons
-// ============================================
-
-function ChatIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-
-function FolderIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
-    </svg>
-  )
-}
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  )
-}
-
-function EditIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-    </svg>
-  )
-}

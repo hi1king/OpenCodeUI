@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { FolderIcon, ArrowUpIcon, SpinnerIcon, PlusIcon } from '../../components/Icons'
 import { createPortal } from 'react-dom'
 import { listDirectory, getPath } from '../../api'
 import { fileErrorHandler } from '../../utils'
@@ -312,10 +313,10 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
               spellCheck={false}
             />
             {/* Enter Hint */}
-            <div className="flex items-center gap-2">
-               {isLoading && <LoadingSpinner />}
-               <span className="text-[10px] text-text-400 bg-bg-100 px-1.5 py-0.5 rounded border border-border-200/50">Enter</span>
-            </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-text-200">Select Project</span>
+               {isLoading && <SpinnerIcon className="animate-spin text-text-400" size={20} />}
+              </div>
           </div>
         </div>
 
@@ -420,39 +421,3 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
   )
 }
 
-// ============================================
-// Icons
-// ============================================
-
-function FolderIcon({ className }: { className?: string }) { 
-  return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-    </svg>
-  ) 
-}
-
-function ArrowUpIcon({ className }: { className?: string }) { 
-  return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
-  ) 
-}
-
-function LoadingSpinner() { 
-  return (
-    <svg className="animate-spin text-text-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
-      <path d="M12 2a10 10 0 0 1 10 10"/>
-    </svg>
-  ) 
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
-}

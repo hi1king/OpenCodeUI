@@ -1,4 +1,5 @@
 import { ContentBlock } from '../../../../components'
+import { AlertCircleIcon } from '../../../../components/Icons'
 import { detectLanguage } from '../../../../utils/languageUtils'
 import type { ToolRendererProps, ExtractedToolData } from '../types'
 
@@ -151,7 +152,7 @@ function DiagnosticsBlock({ diagnostics }: DiagnosticsBlockProps) {
   return (
     <div className="rounded-lg border border-border-200/50 bg-bg-100 overflow-hidden text-xs">
       <div className="px-3 py-1.5 bg-bg-200/50 flex items-center gap-2">
-        <DiagnosticIcon className="w-3.5 h-3.5 text-text-400" />
+        <AlertCircleIcon className="w-3.5 h-3.5 text-text-400" />
         <span className="font-medium text-text-300">Diagnostics</span>
         <div className="flex items-center gap-2 ml-auto font-mono">
           {errors.length > 0 && (
@@ -179,15 +180,6 @@ function DiagnosticsBlock({ diagnostics }: DiagnosticsBlockProps) {
   )
 }
 
-function DiagnosticIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  )
-}
 
 // ============================================
 // Helpers

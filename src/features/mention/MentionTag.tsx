@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react'
 import type { MentionType, MentionItem } from './types'
 import { formatMentionLabel, getFileName, MENTION_COLORS } from './utils'
+import { CheckIcon } from '../../components/Icons'
 
 interface MentionTagProps {
   /** Mention 类型 */
@@ -78,20 +79,6 @@ export function MentionTag({
   )
 }
 
-// 小的勾选图标
-function CheckIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg 
-      className={className} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="3"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  )
-}
 
 // ============================================
 // RichText - 渲染包含 mention 的文本

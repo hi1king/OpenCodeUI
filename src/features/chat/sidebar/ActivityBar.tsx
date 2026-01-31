@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { PlusIcon } from '../../../components/Icons'
 import { useDirectory } from '../../../hooks'
 import { getInitials } from '../../../utils'
 
@@ -11,7 +12,6 @@ export function ActivityBar({ onAddClick }: ActivityBarProps) {
     currentDirectory,
     setCurrentDirectory,
     savedDirectories,
-    removeDirectory,
   } = useDirectory()
   
   const [contextMenu, setContextMenu] = useState<{ path: string; x: number; y: number } | null>(null)
@@ -48,11 +48,6 @@ export function ActivityBar({ onAddClick }: ActivityBarProps) {
     e.preventDefault()
     setContextMenu({ path, x: e.clientX, y: e.clientY })
   }, [])
-
-  const handleRemove = useCallback((path: string) => {
-    removeDirectory(path)
-    closeContextMenu()
-  }, [removeDirectory, closeContextMenu])
 
   return (
     <div className="w-[60px] h-full flex flex-col items-center py-4 gap-3 select-none z-10">
@@ -100,13 +95,13 @@ export function ActivityBar({ onAddClick }: ActivityBarProps) {
           className="fixed z-50 bg-bg-000 border border-border-200 rounded-lg shadow-lg py-1 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
-          <button
-            onClick={() => handleRemove(contextMenu.path)}
-            className="w-full px-3 py-1.5 text-left text-sm text-danger-100 hover:bg-bg-200 flex items-center gap-2"
-          >
-            <TrashIcon />
-            Remove Project
-          </button>
+        <button
+          onClick={onAddClick}
+          className="w-8 h-8 rounded-lg bg-bg-200/50 hover:bg-bg-200 text-text-400 hover:text-text-100 flex items-center justify-center transition-colors group relative"
+        >
+          <PlusIcon size={20} />
+          <Tooltip text="New Project" />
+        </button>
         </div>
       )}
     </div>
@@ -212,22 +207,3 @@ function Tooltip({ text, position = 'right' }: { text: string; position?: 'right
   )
 }
 
-// ============================================
-// Icons
-// ============================================
-
-function PlusIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-    </svg>
-  )
-}

@@ -5,6 +5,7 @@ import { useDirectory } from '../../../hooks'
 import { useSessionContext } from '../../../contexts/SessionContext'
 import { updateSession, subscribeToConnectionState, type ApiSession, type ConnectionInfo } from '../../../api'
 import { uiErrorHandler } from '../../../utils'
+import { PlusIcon } from '../../../components/Icons'
 
 interface SidePanelProps {
   onNewSession: () => void
@@ -193,14 +194,3 @@ function ConnectionIndicator({ state }: { state: string }) {
   )
 }
 
-// ============================================
-// Icons
-// ============================================
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
-}

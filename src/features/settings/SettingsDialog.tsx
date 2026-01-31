@@ -1,5 +1,5 @@
 import { Dialog } from '../../components/ui/Dialog'
-import { SunIcon, MoonIcon, SystemIcon, MaximizeIcon, MinimizeIcon } from '../../components/Icons'
+import { SunIcon, MoonIcon, SystemIcon, MaximizeIcon, MinimizeIcon, PathAutoIcon, PathUnixIcon, PathWindowsIcon } from '../../components/Icons'
 import { usePathMode } from '../../hooks'
 import type { ThemeMode } from '../../hooks'
 import type { PathMode } from '../../utils/directoryUtils'
@@ -13,31 +13,7 @@ interface SettingsDialogProps {
   onToggleWideMode?: () => void
 }
 
-// Path mode icons
-function AutoIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
-    </svg>
-  )
-}
-
-function UnixIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <path d="M7 4l10 16" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function WindowsIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <path d="M17 4L7 20" strokeLinecap="round" />
-    </svg>
-  )
-}
+// Path mode icons removed (using imports)
 
 export function SettingsDialog({
   isOpen,
@@ -129,7 +105,7 @@ export function SettingsDialog({
                   : 'text-text-400 hover:text-text-200'
               }`}
             >
-              <AutoIcon />
+              <PathAutoIcon />
               <span>Auto</span>
             </button>
             <button
@@ -140,7 +116,7 @@ export function SettingsDialog({
                   : 'text-text-400 hover:text-text-200'
               }`}
             >
-              <UnixIcon />
+              <PathUnixIcon />
               <span>Unix /</span>
             </button>
             <button
@@ -151,7 +127,7 @@ export function SettingsDialog({
                   : 'text-text-400 hover:text-text-200'
               }`}
             >
-              <WindowsIcon />
+              <PathWindowsIcon />
               <span>Win \</span>
             </button>
           </div>

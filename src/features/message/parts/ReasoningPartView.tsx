@@ -1,43 +1,8 @@
 import { memo, useState, useRef, useEffect } from 'react'
-import { ChevronDownIcon } from '../../../components/Icons'
+import { ChevronDownIcon, LightbulbIcon, SpinnerIcon } from '../../../components/Icons'
 import { ScrollArea } from '../../../components/ui'
 import { useSmoothStream } from '../../../hooks/useSmoothStream'
 import type { ReasoningPart } from '../../../types/message'
-
-function ThinkingIcon() {
-  return (
-    <svg 
-      width="14" 
-      height="14" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M12 2a8 8 0 0 0-8 8c0 3.5 2.5 6.5 6 7.5V19a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1.5c3.5-1 6-4 6-7.5a8 8 0 0 0-8-8Z" />
-      <path d="M10 22h4" />
-    </svg>
-  )
-}
-
-function ThinkingSpinner() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className="animate-spin"
-    >
-      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-      <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
-    </svg>
-  )
-}
 
 interface ReasoningPartViewProps {
   part: ReasoningPart
@@ -93,9 +58,9 @@ export const ReasoningPartView = memo(function ReasoningPartView({ part, isStrea
         }`}
       >
         {isPartStreaming ? (
-          <ThinkingSpinner />
+          <SpinnerIcon className="animate-spin" size={14} />
         ) : (
-          <ThinkingIcon />
+          <LightbulbIcon size={14} />
         )}
         <span className="text-xs font-medium whitespace-nowrap">
           {isPartStreaming ? 'Thinking...' : 'Thinking'}

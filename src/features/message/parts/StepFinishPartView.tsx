@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { CpuIcon, DollarSignIcon } from '../../../components/Icons'
 import type { StepFinishPart } from '../../../types/message'
 
 interface StepFinishPartViewProps {
@@ -31,7 +32,7 @@ export const StepFinishPartView = memo(function StepFinishPartView({ part }: Ste
     <div className="flex items-center gap-3 text-[10px] text-text-500 px-1 py-0.5">
       {/* Tokens */}
       <div className="flex items-center gap-1.5">
-        <TokenIcon />
+        <CpuIcon size={10} className="opacity-50" />
         <span title={`Input: ${tokens.input}, Output: ${tokens.output}, Reasoning: ${tokens.reasoning}`}>
           {formatNumber(totalTokens)} tokens
         </span>
@@ -45,7 +46,7 @@ export const StepFinishPartView = memo(function StepFinishPartView({ part }: Ste
       {/* Cost */}
       {cost > 0 && (
         <div className="flex items-center gap-1">
-          <CostIcon />
+          <DollarSignIcon size={10} className="opacity-50" />
           <span>{formatCost(cost)}</span>
         </div>
       )}
@@ -53,19 +54,3 @@ export const StepFinishPartView = memo(function StepFinishPartView({ part }: Ste
   )
 })
 
-function TokenIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-50">
-      <path d="M12 2v20M2 12h20" />
-    </svg>
-  )
-}
-
-function CostIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-50">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v12M9 9h6M9 15h6" />
-    </svg>
-  )
-}
