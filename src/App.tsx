@@ -85,6 +85,7 @@ function App() {
     // Handlers
     handleSend,
     handleAbort,
+    handleCommand,
     handleUndoWithAnimation,
     handleRedoWithAnimation,
     handleSelectSession,
@@ -183,6 +184,7 @@ function App() {
               <InputBox 
                 onSend={handleSend} 
                 onAbort={handleAbort}
+                onCommand={handleCommand}
                 disabled={!isIdle}
                 isStreaming={isStreaming}
                 agents={agents}

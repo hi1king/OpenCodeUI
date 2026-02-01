@@ -134,5 +134,9 @@ export function getAttachmentIcon(attachment: Attachment): { Icon: React.FC; col
       return { Icon: AgentIcon, colorClass: 'text-orange-500' }
     case 'text':
       return { Icon: TerminalIcon, colorClass: 'text-text-400' }
+    case 'command':
+      return { Icon: TerminalIcon, colorClass: 'text-purple-500' }
+    default:
+      return { Icon: FileIcon, colorClass: 'text-text-400' }
   }
 }

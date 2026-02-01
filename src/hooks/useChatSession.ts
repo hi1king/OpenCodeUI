@@ -10,6 +10,7 @@ import {
   sendMessage, abortSession, 
   getSelectableAgents, 
   getPendingPermissions, getPendingQuestions, 
+  executeCommand,
   type ApiSession,
   type ApiAgent, type Attachment, type ModelInfo,
 } from '../api'
@@ -235,6 +236,34 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
     }
   }, [routeSessionId, sessionDirectory, currentDirectory])
 
+  // Command handler (slash commands)
+  const handleCommand = useCallback(async (commandStr: string) => {
+    // 解析命令："/help arg1 arg2" => command="help", args="arg1 arg2"
+    const trimmed = commandStr.trim()
+    const withoutSlash = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed
+    const spaceIndex = withoutSlash.indexOf(' ')
+    const command = spaceIndex > 0 ? withoutSlash.slice(0, spaceIndex) : withoutSlash
+    const args = spaceIndex > 0 ? withoutSlash.slice(spaceIndex + 1) : ''
+    
+    if (!command) return
+    
+    let sessionId = routeSessionId
+    
+    try {
+      // Create session if needed (like handleSend does)
+      if (!sessionId) {
+        const newSession = await createSession()
+        sessionId = newSession.id
+        messageStore.setCurrentSession(sessionId)
+        navigateToSession(sessionId)
+      }
+      
+      await executeCommand(sessionId, command, args, effectiveDirectory)
+    } catch (err) {
+      handleError('execute command', err)
+    }
+  }, [routeSessionId, effectiveDirectory, createSession, navigateToSession])
+
   // Undo with animation
   const handleUndoWithAnimation = useCallback(async (userMessageId: string) => {
     chatAreaRef.current?.suppressAutoScroll(AUTO_SCROLL_SUPPRESS_DURATION_MS)
@@ -309,6 +338,7 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
     // Handlers
     handleSend,
     handleAbort,
+    handleCommand,
     handleUndoWithAnimation,
     handleRedoWithAnimation,
     handleSelectSession,

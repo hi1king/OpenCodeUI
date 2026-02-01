@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { AttachmentPreview, type Attachment } from '../attachment'
 import { MentionMenu, detectMentionTrigger, MENTION_COLORS, type MentionMenuHandle, type MentionItem } from '../mention'
+import { SlashCommandMenu, type SlashCommandMenuHandle } from '../slash-command'
 import { InputToolbar } from './input/InputToolbar'
 import { UndoStatus } from './input/UndoStatus'
 import type { ApiAgent } from '../../api/client'
+import type { Command } from '../../api/command'
 
 // ============================================
 // Types
 // ============================================
 
-/** Token 类型：普通文本或 mention */
-type TokenType = 'text' | 'mention-file' | 'mention-folder' | 'mention-agent'
+/** Token 类型：普通文本或 mention/command */
+type TokenType = 'text' | 'mention-file' | 'mention-folder' | 'mention-agent' | 'mention-command'
 
 /** 解析后的 token */
 interface Token {
@@ -22,6 +24,7 @@ interface Token {
 export interface InputBoxProps {
   onSend: (text: string, attachments: Attachment[], options?: { agent?: string; variant?: string }) => void
   onAbort?: () => void
+  onCommand?: (command: string) => void  // 斜杠命令回调，接收完整命令字符串如 "/help"
   disabled?: boolean
   isStreaming?: boolean
   agents?: ApiAgent[]
@@ -50,7 +53,8 @@ export interface InputBoxProps {
 
 export function InputBox({ 
   onSend, 
-  onAbort, 
+  onAbort,
+  onCommand,
   disabled, 
   isStreaming,
   agents = [],
@@ -80,10 +84,16 @@ export function InputBox({
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStartIndex, setMentionStartIndex] = useState(-1)
   
+  // / Slash Command 状态
+  const [slashOpen, setSlashOpen] = useState(false)
+  const [slashQuery, setSlashQuery] = useState('')
+  const [slashStartIndex, setSlashStartIndex] = useState(-1)
+  
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const inputContainerRef = useRef<HTMLDivElement>(null)
   const mentionMenuRef = useRef<MentionMenuHandle>(null)
+  const slashMenuRef = useRef<SlashCommandMenuHandle>(null)
   const prevRevertedTextRef = useRef<string | undefined>(undefined)
 
   // 注册输入框容器用于动画
@@ -129,6 +139,21 @@ export function InputBox({
   const handleSend = useCallback(() => {
     if (!canSend) return
     
+    // 检测 command attachment
+    const commandAttachment = attachments.find(a => a.type === 'command')
+    if (commandAttachment && commandAttachment.commandName) {
+      // 提取命令后的参数文本
+      const textRange = commandAttachment.textRange
+      const afterCommand = textRange ? text.slice(textRange.end).trim() : ''
+      const commandStr = `/${commandAttachment.commandName}${afterCommand ? ' ' + afterCommand : ''}`
+      
+      onCommand?.(commandStr)
+      setText('')
+      setAttachments([])
+      onClearRevert?.()
+      return
+    }
+    
     // 从 attachments 中找 agent mention
     const agentAttachment = attachments.find(a => a.type === 'agent')
     const mentionedAgent = agentAttachment?.agentName
@@ -142,9 +167,32 @@ export function InputBox({
     setText('')
     setAttachments([])
     onClearRevert?.()
-  }, [canSend, text, attachments, selectedAgent, selectedVariant, onSend, onClearRevert])
+  }, [canSend, text, attachments, selectedAgent, selectedVariant, onSend, onCommand, onClearRevert])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Slash Command 菜单打开时，拦截导航键
+    if (slashOpen && slashMenuRef.current) {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault()
+          slashMenuRef.current.moveUp()
+          return
+        case 'ArrowDown':
+          e.preventDefault()
+          slashMenuRef.current.moveDown()
+          return
+        case 'Enter':
+        case 'Tab':
+          e.preventDefault()
+          slashMenuRef.current.selectCurrent()
+          return
+        case 'Escape':
+          e.preventDefault()
+          setSlashOpen(false)
+          return
+      }
+    }
+    
     // Mention 菜单打开时，拦截导航键
     if (mentionOpen && mentionMenuRef.current) {
       switch (e.key) {
@@ -248,8 +296,19 @@ export function InputBox({
       setMentionQuery(trigger.query)
       setMentionStartIndex(trigger.startIndex)
       setMentionOpen(true)
+      setSlashOpen(false)  // 关闭斜杠菜单
     } else {
       setMentionOpen(false)
+      
+      // 检测 / 触发（只在行首或空白后）
+      const slashTrigger = detectSlashTrigger(newText, cursorPos)
+      if (slashTrigger) {
+        setSlashQuery(slashTrigger.query)
+        setSlashStartIndex(slashTrigger.startIndex)
+        setSlashOpen(true)
+      } else {
+        setSlashOpen(false)
+      }
     }
   }, [])
 
@@ -306,6 +365,49 @@ export function InputBox({
 
   const handleMentionClose = useCallback(() => {
     setMentionOpen(false)
+    textareaRef.current?.focus()
+  }, [])
+
+  // / Slash Command 选择处理 - 类似 @ mention
+  const handleSlashSelect = useCallback((command: Command) => {
+    if (!textareaRef.current) return
+    
+    // 构建 /command 文本
+    const commandText = `/${command.name}`
+    
+    // 计算新文本：替换 /query 为 /command
+    const beforeSlash = text.slice(0, slashStartIndex)
+    const afterQuery = text.slice(slashStartIndex + 1 + slashQuery.length)
+    const newText = beforeSlash + commandText + ' ' + afterQuery
+    
+    // 创建 command attachment
+    const attachment: Attachment = {
+      id: crypto.randomUUID(),
+      type: 'command',
+      displayName: command.name,
+      commandName: command.name,
+      textRange: {
+        value: commandText,
+        start: slashStartIndex,
+        end: slashStartIndex + commandText.length,
+      },
+    }
+    
+    setText(newText)
+    setAttachments(prev => [...prev, attachment])
+    setSlashOpen(false)
+    
+    // 移动光标到命令后
+    requestAnimationFrame(() => {
+      if (!textareaRef.current) return
+      const newCursorPos = slashStartIndex + commandText.length + 1
+      textareaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+      textareaRef.current.focus()
+    })
+  }, [text, slashStartIndex, slashQuery])
+
+  const handleSlashClose = useCallback(() => {
+    setSlashOpen(false)
     textareaRef.current?.focus()
   }, [])
 
@@ -426,6 +528,16 @@ export function InputBox({
               excludeValues={excludeValues}
               onSelect={handleMentionSelect}
               onClose={handleMentionClose}
+            />
+            
+            {/* / Slash Command Menu */}
+            <SlashCommandMenu
+              ref={slashMenuRef}
+              isOpen={slashOpen}
+              query={slashQuery}
+              rootPath={rootPath}
+              onSelect={handleSlashSelect}
+              onClose={handleSlashClose}
             />
             
             <div className="relative">
@@ -623,6 +735,19 @@ function TextHighlightOverlay({ text, attachments, scrollRef }: TextHighlightOve
         if (token.type === 'text') {
           return <span key={i} className="text-text-100">{token.content || '\u00A0'}</span>
         }
+        
+        // Command token - 使用紫色
+        if (token.type === 'mention-command') {
+          return (
+            <span 
+              key={i} 
+              className="bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded px-0.5 -mx-0.5"
+            >
+              {token.content}
+            </span>
+          )
+        }
+        
         // Mention token — 用对应类型的颜色
         const colorKey = token.type === 'mention-agent' ? 'agent' 
           : token.type === 'mention-folder' ? 'folder' 
@@ -639,6 +764,26 @@ function TextHighlightOverlay({ text, attachments, scrollRef }: TextHighlightOve
       })}
     </div>
   )
+}
+
+// ============================================
+// detectSlashTrigger - 检测斜杠命令触发
+// 只在文本最开头触发
+// ============================================
+
+function detectSlashTrigger(text: string, cursorPos: number): { query: string; startIndex: number } | null {
+  // 斜杠命令只能在文本最开头
+  if (!text.startsWith('/')) return null
+  
+  // 提取 / 之后到光标的文本作为 query
+  const query = text.slice(1, cursorPos)
+  
+  // 如果 query 中包含空格或换行，说明命令已经输入完毕
+  if (query.includes(' ') || query.includes('\n')) {
+    return null
+  }
+  
+  return { query, startIndex: 0 }
 }
 
 // ============================================
@@ -675,9 +820,10 @@ function tokenize(text: string, attachments: Attachment[]): Token[] {
       tokens.push({ type: 'text', content: text.slice(lastIndex, m.start) })
     }
 
-    // mention token
+    // mention/command token
     const tokenType: TokenType = m.type === 'agent' ? 'mention-agent'
       : m.type === 'folder' ? 'mention-folder'
+      : m.type === 'command' ? 'mention-command'
       : 'mention-file'
     tokens.push({ type: tokenType, content: m.value, attachmentId: m.id })
 

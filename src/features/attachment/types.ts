@@ -1,8 +1,8 @@
-export type AttachmentType = 'file' | 'folder' | 'agent' | 'text'
+export type AttachmentType = 'file' | 'folder' | 'agent' | 'text' | 'command'
 
 /**
  * 统一的附件类型
- * 支持图片、文件、文件夹、agent
+ * 支持图片、文件、文件夹、agent、命令
  */
 export interface Attachment {
   id: string                    // 唯一标识
@@ -21,10 +21,13 @@ export interface Attachment {
   agentName?: string            // agent 名称
   agentDescription?: string     // agent 描述
   
+  // command 用
+  commandName?: string          // 命令名（不含 /）
+  
   // 在文本中的位置信息（发送时用于构建 source）
   // 图片没有这个，因为不在文本中
   textRange?: {
-    value: string               // @xxx 的文本
+    value: string               // @xxx 或 /xxx 的文本
     start: number
     end: number
   }
