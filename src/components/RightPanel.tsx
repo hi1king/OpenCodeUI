@@ -168,14 +168,6 @@ export const RightPanel = memo(function RightPanel() {
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isMobile && rightPanelOpen && (
-        <div 
-          className="mobile-overlay-backdrop animate-fade-in-overlay"
-          onClick={() => layoutStore.closeRightPanel()}
-        />
-      )}
-
       <div 
         ref={panelRef}
         style={!isMobile ? { 
@@ -185,7 +177,7 @@ export const RightPanel = memo(function RightPanel() {
         className={`
           flex flex-col bg-bg-100 overflow-hidden
           ${isMobile 
-            ? 'fixed top-0 right-0 bottom-0 z-[100] w-[85vw] max-w-[320px] shadow-2xl animate-slide-in-right border-l border-border-200' 
+            ? 'fixed inset-0 z-[100] w-full shadow-2xl animate-slide-in-right' 
             : `relative h-full ${rightPanelOpen ? 'border-l border-border-200/50' : ''}`
           }
           ${!isMobile && isResizing ? 'transition-none' : 'transition-[width] duration-200 ease-out'}
