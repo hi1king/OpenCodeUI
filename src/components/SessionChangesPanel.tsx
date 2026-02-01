@@ -28,10 +28,10 @@ export const SessionChangesPanel = memo(function SessionChangesPanel({
       getSessionDiff(sessionId)
         .then(data => {
           setDiffs(data)
-          // 默认展开第一个
-          if (data.length > 0) {
-            setExpandedFiles(new Set([data[0].file]))
-          }
+          // 默认不展开任何文件
+          // if (data.length > 0) {
+          //   setExpandedFiles(new Set([data[0].file]))
+          // }
         })
         .catch(err => {
           console.error('Failed to load session diff:', err)
