@@ -103,10 +103,20 @@ export function Header({
 
         <div className="w-px h-4 bg-border-200/50 mx-1 shrink-0" />
 
-        {/* Session Title Split Button */}
-        <div className="flex items-center group bg-transparent hover:bg-bg-200/50 rounded-lg transition-colors duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] p-0.5 border border-transparent hover:border-border-200/50 min-w-0 shrink">
+        {/* Model Selector - Moved to left */}
+        <ModelSelector
+          models={models}
+          selectedModelKey={selectedModelKey}
+          onSelect={onModelChange}
+          isLoading={modelsLoading}
+        />
+      </div>
+
+      {/* Center: Session Title - Only on desktop */}
+      <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex">
+        <div className="flex items-center group bg-transparent hover:bg-bg-200/50 rounded-lg transition-colors duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] p-0.5 border border-transparent hover:border-border-200/50">
           <button 
-            className="px-3 py-1.5 text-sm font-medium text-text-200 hover:text-text-100 transition-colors truncate max-w-[120px] sm:max-w-[200px] text-left cursor-default select-none"
+            className="px-3 py-1.5 text-sm font-medium text-text-200 hover:text-text-100 transition-colors truncate max-w-[200px] lg:max-w-[300px] text-left cursor-default select-none"
             title={sessionTitle}
           >
             {sessionTitle}
@@ -119,16 +129,6 @@ export function Header({
             <ChevronDownIcon size={12} />
           </button>
         </div>
-      </div>
-
-      {/* Center: Model Selector */}
-      <div className="hidden md:flex absolute left-1/2 -translate-x-1/2">
-        <ModelSelector
-          models={models}
-          selectedModelKey={selectedModelKey}
-          onSelect={onModelChange}
-          isLoading={modelsLoading}
-        />
       </div>
 
       <div className="flex items-center gap-2 pointer-events-auto shrink-0">
@@ -149,36 +149,6 @@ export function Header({
             {isWideMode ? <MinimizeIcon size={18} /> : <MaximizeIcon size={18} />}
           </IconButton>
         )}
-
-        {/* Right Panel Toggle */}
-        <IconButton
-          aria-label={rightPanelOpen ? "Close panel" : "Open panel"}
-          onClick={() => layoutStore.toggleRightPanel()}
-          className={`
-            transition-colors
-            ${rightPanelOpen
-              ? 'text-accent-main-100 bg-bg-200/50' 
-              : 'text-text-400 hover:text-text-100 hover:bg-bg-200/50'
-            }
-          `}
-        >
-          <PanelRightIcon size={18} />
-        </IconButton>
-
-        {/* Bottom Panel Toggle */}
-        <IconButton
-          aria-label={bottomPanelOpen ? "Close bottom panel" : "Open bottom panel"}
-          onClick={() => layoutStore.toggleBottomPanel()}
-          className={`
-            transition-colors
-            ${bottomPanelOpen
-              ? 'text-accent-main-100 bg-bg-200/50' 
-              : 'text-text-400 hover:text-text-100 hover:bg-bg-200/50'
-            }
-          `}
-        >
-          <PanelBottomIcon size={18} />
-        </IconButton>
 
         {/* Settings Button */}
         <div className="relative">
@@ -259,6 +229,36 @@ export function Header({
             </div>
           </DropdownMenu>
         </div>
+
+        {/* Bottom Panel Toggle - Moved to second last */}
+        <IconButton
+          aria-label={bottomPanelOpen ? "Close bottom panel" : "Open bottom panel"}
+          onClick={() => layoutStore.toggleBottomPanel()}
+          className={`
+            transition-colors
+            ${bottomPanelOpen
+              ? 'text-accent-main-100 bg-bg-200/50' 
+              : 'text-text-400 hover:text-text-100 hover:bg-bg-200/50'
+            }
+          `}
+        >
+          <PanelBottomIcon size={18} />
+        </IconButton>
+
+        {/* Right Panel Toggle - Moved to rightmost */}
+        <IconButton
+          aria-label={rightPanelOpen ? "Close panel" : "Open panel"}
+          onClick={() => layoutStore.toggleRightPanel()}
+          className={`
+            transition-colors
+            ${rightPanelOpen
+              ? 'text-accent-main-100 bg-bg-200/50' 
+              : 'text-text-400 hover:text-text-100 hover:bg-bg-200/50'
+            }
+          `}
+        >
+          <PanelRightIcon size={18} />
+        </IconButton>
       </div>
 
       <SettingsDialog
