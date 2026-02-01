@@ -3,7 +3,7 @@
 // ============================================
 
 import { useState, useCallback, useEffect } from 'react'
-import { useMessageStore, messageStore, useSessionFamily } from '../store'
+import { useMessageStore, messageStore, useSessionFamily, autoApproveStore } from '../store'
 import { useSessionManager, useGlobalEvents } from '../hooks'
 import { usePermissions, useRouter, usePermissionHandler, useMessageAnimation, useDirectory, useSessionContext } from '../hooks'
 import { 
@@ -90,9 +90,23 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
   // Message animations
   const { registerMessage, registerInputBox, animateUndo, animateRedo } = useMessageAnimation()
 
+  // Effective directory (used in multiple places)
+  const effectiveDirectory = sessionDirectory || currentDirectory
+
   // Global Events (SSE)
   useGlobalEvents({
     onPermissionAsked: (request) => {
+      // 自动批准检查（实验性功能）
+      if (autoApproveStore.enabled && autoApproveStore.shouldAutoApprove(
+        request.sessionID,
+        request.permission,
+        request.patterns
+      )) {
+        // 匹配规则，自动用 once 批准，不弹框
+        handlePermissionReply(request.id, 'once', effectiveDirectory)
+        return
+      }
+      
       setPendingPermissionRequests(prev => {
         if (prev.some(r => r.id === request.id)) return prev
         return [...prev, request]
@@ -123,9 +137,6 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
       chatAreaRef.current?.scrollToBottomIfAtBottom()
     },
   })
-
-  // Effective directory
-  const effectiveDirectory = sessionDirectory || currentDirectory
   
   // Poll pending permissions
   useEffect(() => {

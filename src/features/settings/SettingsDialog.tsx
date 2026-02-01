@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Dialog } from '../../components/ui/Dialog'
 import { SunIcon, MoonIcon, SystemIcon, MaximizeIcon, MinimizeIcon, PathAutoIcon, PathUnixIcon, PathWindowsIcon } from '../../components/Icons'
 import { usePathMode } from '../../hooks'
+import { autoApproveStore } from '../../store'
 import type { ThemeMode } from '../../hooks'
 import type { PathMode } from '../../utils/directoryUtils'
 
@@ -24,9 +26,20 @@ export function SettingsDialog({
   onToggleWideMode,
 }: SettingsDialogProps) {
   const { pathMode, setPathMode, effectiveStyle, detectedStyle, isAutoMode } = usePathMode()
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(autoApproveStore.enabled)
 
   const handlePathModeChange = (mode: PathMode) => {
     setPathMode(mode)
+  }
+
+  const handleAutoApproveToggle = () => {
+    const newValue = !autoApproveEnabled
+    setAutoApproveEnabled(newValue)
+    autoApproveStore.setEnabled(newValue)
+    if (!newValue) {
+      // 关闭时清空所有规则
+      autoApproveStore.clearAllRules()
+    }
   }
 
   return (
@@ -167,6 +180,33 @@ export function SettingsDialog({
             </div>
           </div>
         )}
+
+        {/* Experimental Section */}
+        <div>
+          <h3 className="text-xs font-semibold text-text-400 mb-3 uppercase tracking-wider">Experimental</h3>
+          <div 
+            className="flex items-center justify-between p-3 rounded-xl border border-border-200/50 bg-bg-000 hover:border-border-300 transition-all cursor-pointer group"
+            onClick={handleAutoApproveToggle}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-bg-100 text-text-300 group-hover:text-text-100 transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-text-100">Auto-Approve</div>
+                <div className="text-xs text-text-400">
+                  "Always" uses local rules, sends "once" to server. Refresh to reset.
+                </div>
+              </div>
+            </div>
+            <div className={`w-11 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${autoApproveEnabled ? 'bg-accent-main-100' : 'bg-bg-200'}`}>
+              <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ease-in-out ${autoApproveEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+          </div>
+        </div>
         
         <div className="pt-6 border-t border-border-100/50 text-center">
            <p className="text-xs text-text-400">Claude Chat UI • v0.1.0</p>
