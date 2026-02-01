@@ -11,7 +11,7 @@ import { SessionChangesPanel } from './SessionChangesPanel'
 import { FileExplorer } from './FileExplorer'
 import { Terminal } from './Terminal'
 import { useMessageStore } from '../store'
-import { useDirectory, useIsMobile } from '../hooks'
+import { useDirectory, useIsMobile, usePanelAnimation } from '../hooks'
 import { createPtySession, removePtySession } from '../api/pty'
 import type { TerminalTab } from '../store/layoutStore'
 
@@ -23,6 +23,12 @@ export const RightPanel = memo(function RightPanel() {
   const { sessionId } = useMessageStore()
   const { currentDirectory } = useDirectory()
   const isMobile = useIsMobile()
+  
+  const { 
+    shouldRender: mobileShouldRender, 
+    animationClass, 
+    onAnimationEnd 
+  } = usePanelAnimation(rightPanelOpen, 'right')
   
   const [isResizing, setIsResizing] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -162,7 +168,7 @@ export const RightPanel = memo(function RightPanel() {
   // 如果 PC 端关闭且非 mobile，或者 mobile 端关闭，则不渲染（Mobile 使用条件渲染实现动画，PC 使用宽度过渡）
   // 为了 Mobile 动画，Mobile 下如果 open 就渲染，否则不渲染。
   // PC 下始终渲染 DOM，通过宽度控制显示隐藏。
-  const shouldRender = isMobile ? rightPanelOpen : true
+  const shouldRender = isMobile ? mobileShouldRender : true
 
   if (!shouldRender) return null
 
@@ -170,6 +176,7 @@ export const RightPanel = memo(function RightPanel() {
     <>
       <div 
         ref={panelRef}
+        onAnimationEnd={isMobile ? onAnimationEnd : undefined}
         style={!isMobile ? { 
           '--panel-width': `${rightPanelWidth}px`,
           width: rightPanelOpen ? 'var(--panel-width)' : 0 
@@ -177,7 +184,7 @@ export const RightPanel = memo(function RightPanel() {
         className={`
           flex flex-col bg-bg-100 overflow-hidden
           ${isMobile 
-            ? 'fixed inset-0 z-[100] w-full shadow-2xl animate-slide-in-right' 
+            ? `fixed inset-0 z-[100] w-full shadow-2xl ${animationClass}` 
             : `relative h-full ${rightPanelOpen ? 'border-l border-border-200/50' : ''}`
           }
           ${!isMobile && isResizing ? 'transition-none' : 'transition-[width] duration-200 ease-out'}

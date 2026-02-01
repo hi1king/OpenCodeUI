@@ -13,7 +13,7 @@ import { createPtySession, removePtySession, listPtySessions } from '../api/pty'
 import { SessionChangesPanel } from './SessionChangesPanel'
 import { FileExplorer } from './FileExplorer'
 import { useMessageStore } from '../store'
-import { useIsMobile } from '../hooks'
+import { useIsMobile, usePanelAnimation } from '../hooks'
 
 // 常量
 const MIN_HEIGHT = 100
@@ -27,6 +27,13 @@ export const BottomPanel = memo(function BottomPanel({ directory }: BottomPanelP
   const { bottomPanelOpen, bottomPanelHeight, previewFile } = useLayoutStore()
   const { sessionId } = useMessageStore()
   const isMobile = useIsMobile()
+  
+  const { 
+    shouldRender: mobileShouldRender, 
+    animationClass, 
+    overlayAnimationClass,
+    onAnimationEnd 
+  } = usePanelAnimation(bottomPanelOpen, 'bottom')
   
   const [isResizing, setIsResizing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
@@ -261,25 +268,26 @@ export const BottomPanel = memo(function BottomPanel({ directory }: BottomPanelP
   }, [isRestoring, handleNewTerminal, directory, previewFile, sessionId, isResizing])
 
   // Mobile 动画条件渲染
-  const shouldRender = isMobile ? bottomPanelOpen : true
+  const shouldRender = isMobile ? mobileShouldRender : true
   if (!shouldRender) return null
 
   return (
     <>
       {/* Mobile Overlay */}
-      {isMobile && bottomPanelOpen && (
+      {isMobile && mobileShouldRender && (
         <div 
-          className="mobile-overlay-backdrop animate-fade-in-overlay"
+          className={`mobile-overlay-backdrop ${overlayAnimationClass}`}
           onClick={() => layoutStore.closeBottomPanel()}
         />
       )}
 
       <div 
         ref={panelRef}
+        onAnimationEnd={isMobile ? onAnimationEnd : undefined}
         className={`
           flex flex-col bg-bg-100 
           ${isMobile 
-            ? 'fixed bottom-0 left-0 right-0 z-[100] h-[40vh] shadow-2xl animate-slide-in-bottom rounded-t-xl overflow-hidden border-t border-border-200' 
+            ? `fixed bottom-0 left-0 right-0 z-[100] h-[40vh] shadow-2xl ${animationClass} rounded-t-xl overflow-hidden border-t border-border-200` 
             : 'relative'
           }
         `}
