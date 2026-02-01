@@ -149,6 +149,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
           {filteredCommands.map((cmd, index) => (
             <button
               key={cmd.name}
+              title={cmd.description}
               className={`w-full px-3 py-2 flex items-start gap-3 text-left transition-colors ${
                 index === selectedIndex
                   ? 'bg-accent-main-100/10'
