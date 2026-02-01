@@ -1,12 +1,5 @@
 /**
  * DiffModal - 全屏 Diff 查看器
- * 
- * 参考 GitHub 风格实现：
- * - Split view: 单表格四列布局，左右同步滚动
- * - Unified view: 传统上下布局
- * - 删除/添加行智能配对
- * - 行内差异高亮
- * - 高斯模糊背景，与整体 UI 风格统一
  */
 
 import { memo, useState, useEffect, useMemo } from 'react'
@@ -40,6 +33,11 @@ interface DiffLine {
 interface PairedLine {
   left: DiffLine
   right: DiffLine
+}
+
+interface UnifiedLine extends DiffLine {
+  oldLineNo?: number
+  newLineNo?: number
 }
 
 // ============================================
@@ -122,84 +120,68 @@ export const DiffModal = memo(function DiffModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-200 ease-out"
-      style={{
-        backgroundColor: isVisible ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0)',
-        backdropFilter: isVisible ? 'blur(8px)' : 'blur(0px)',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+      className="fixed inset-0 z-[100] flex flex-col bg-bg-000 transition-opacity duration-200"
+      style={{ opacity: isVisible ? 1 : 0 }}
+      role="dialog"
+      aria-modal="true"
     >
-      {/* Modal Panel */}
-      <div 
-        className="relative bg-bg-000 border border-border-200 rounded-xl shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ease-out w-full max-w-6xl h-[85vh]"
-        style={{ 
-          opacity: isVisible ? 1 : 0,
-          transform: isVisible ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(12px)',
-        }}
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-100/50 shrink-0">
-          <div className="flex items-center gap-4">
-            {fileName && (
-              <span className="text-text-100 font-mono text-sm font-medium">{fileName}</span>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-100 bg-bg-100/50 shrink-0">
+        <div className="flex items-center gap-4">
+          {fileName && (
+            <span className="text-text-100 font-mono text-sm font-medium">{fileName}</span>
+          )}
+          <div className="flex items-center gap-2 text-xs font-mono">
+            {diffStats.additions > 0 && (
+              <span className="text-success-100">+{diffStats.additions}</span>
             )}
-            <div className="flex items-center gap-2 text-xs font-mono">
-              {diffStats.additions > 0 && (
-                <span className="text-success-100 bg-success-bg px-1.5 py-0.5 rounded">+{diffStats.additions}</span>
-              )}
-              {diffStats.deletions > 0 && (
-                <span className="text-danger-100 bg-danger-bg px-1.5 py-0.5 rounded">−{diffStats.deletions}</span>
-              )}
-            </div>
+            {diffStats.deletions > 0 && (
+              <span className="text-danger-100">−{diffStats.deletions}</span>
+            )}
           </div>
-          
-          <div className="flex items-center gap-3">
-            {/* 视图模式切换 */}
-            <div className="flex items-center bg-bg-200 rounded-lg p-0.5 text-xs">
-              <button
-                className={`px-3 py-1.5 rounded-md transition-colors ${
-                  viewMode === 'split' 
-                    ? 'bg-bg-000 text-text-100 shadow-sm' 
-                    : 'text-text-400 hover:text-text-200'
-                }`}
-                onClick={() => setViewMode('split')}
-              >
-                Split
-              </button>
-              <button
-                className={`px-3 py-1.5 rounded-md transition-colors ${
-                  viewMode === 'unified' 
-                    ? 'bg-bg-000 text-text-100 shadow-sm' 
-                    : 'text-text-400 hover:text-text-200'
-                }`}
-                onClick={() => setViewMode('unified')}
-              >
-                Unified
-              </button>
-            </div>
-            
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* 视图模式切换 */}
+          <div className="flex items-center bg-bg-200 rounded-lg p-0.5 text-xs">
             <button
-              onClick={onClose}
-              className="p-1.5 text-text-400 hover:text-text-100 hover:bg-bg-100 rounded-md transition-colors"
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                viewMode === 'split' 
+                  ? 'bg-bg-000 text-text-100 shadow-sm' 
+                  : 'text-text-400 hover:text-text-200'
+              }`}
+              onClick={() => setViewMode('split')}
             >
-              <CloseIcon size={18} />
+              Split
+            </button>
+            <button
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                viewMode === 'unified' 
+                  ? 'bg-bg-000 text-text-100 shadow-sm' 
+                  : 'text-text-400 hover:text-text-200'
+              }`}
+              onClick={() => setViewMode('unified')}
+            >
+              Unified
             </button>
           </div>
+          
+          <button
+            onClick={onClose}
+            className="p-1.5 text-text-400 hover:text-text-100 hover:bg-bg-200 rounded-md transition-colors"
+          >
+            <CloseIcon size={18} />
+          </button>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto custom-scrollbar bg-bg-100/30">
-          {viewMode === 'split' ? (
-            <SplitDiffView before={before} after={after} language={lang} />
-          ) : (
-            <UnifiedDiffView before={before} after={after} language={lang} />
-          )}
-        </div>
+      {/* Content */}
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        {viewMode === 'split' ? (
+          <SplitDiffView before={before} after={after} language={lang} />
+        ) : (
+          <UnifiedDiffView before={before} after={after} language={lang} />
+        )}
       </div>
     </div>,
     document.body
@@ -207,7 +189,7 @@ export const DiffModal = memo(function DiffModal({
 })
 
 // ============================================
-// Split Diff View - GitHub 风格四列布局
+// Split Diff View
 // ============================================
 
 interface DiffViewProps {
@@ -222,69 +204,67 @@ const SplitDiffView = memo(function SplitDiffView({ before, after }: DiffViewPro
   }, [before, after])
 
   if (pairedLines.length === 0) {
-    return <div className="p-4 text-text-400 text-sm">No changes</div>
+    return <div className="p-8 text-text-400 text-sm text-center">No changes</div>
   }
 
   return (
-    <table className="w-full border-collapse text-[13px] font-mono leading-5">
-      <colgroup>
-        <col className="w-12" />
-        <col className="w-[calc(50%-24px)]" />
-        <col className="w-12" />
-        <col className="w-[calc(50%-24px)]" />
-      </colgroup>
-      <tbody>
-        {pairedLines.map((pair, idx) => (
-          <tr key={idx} className="border-b border-border-100/50">
-            {/* Left side */}
-            <td className={`px-2 py-0 text-right text-text-500 select-none align-top border-r border-border-100 ${
-              pair.left.type === 'delete' ? 'bg-danger-bg' : ''
-            }`}>
-              {pair.left.lineNo}
-            </td>
-            <td className={`px-3 py-0 whitespace-pre-wrap break-all align-top border-r border-border-200 ${
-              pair.left.type === 'delete' ? 'bg-danger-bg' : ''
-            }`}>
-              {pair.left.type === 'delete' && (
-                <span className="inline-block w-4 text-danger-100 select-none shrink-0">−</span>
-              )}
-              {pair.left.type === 'context' && (
-                <span className="inline-block w-4 text-text-500 select-none shrink-0"> </span>
-              )}
-              {pair.left.type !== 'empty' && (
-                <span 
-                  className="text-text-100"
-                  dangerouslySetInnerHTML={{ __html: pair.left.highlightedContent || escapeHtml(pair.left.content) }} 
-                />
-              )}
-            </td>
-            
-            {/* Right side */}
-            <td className={`px-2 py-0 text-right text-text-500 select-none align-top border-r border-border-100 ${
-              pair.right.type === 'add' ? 'bg-success-bg' : ''
-            }`}>
-              {pair.right.lineNo}
-            </td>
-            <td className={`px-3 py-0 whitespace-pre-wrap break-all align-top ${
-              pair.right.type === 'add' ? 'bg-success-bg' : ''
-            }`}>
-              {pair.right.type === 'add' && (
-                <span className="inline-block w-4 text-success-100 select-none shrink-0">+</span>
-              )}
-              {pair.right.type === 'context' && (
-                <span className="inline-block w-4 text-text-500 select-none shrink-0"> </span>
-              )}
-              {pair.right.type !== 'empty' && (
-                <span 
-                  className="text-text-100"
-                  dangerouslySetInnerHTML={{ __html: pair.right.highlightedContent || escapeHtml(pair.right.content) }} 
-                />
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="flex min-h-full">
+      {/* Left panel */}
+      <div className="flex-1 border-r border-border-100">
+        <div className="font-mono text-[13px] leading-6">
+          {pairedLines.map((pair, idx) => (
+            <div
+              key={idx}
+              className={`flex ${getLineBgClass(pair.left.type)}`}
+            >
+              <div className="w-12 shrink-0 px-2 text-right text-text-500 select-none">
+                {pair.left.lineNo}
+              </div>
+              <div className="flex-1 px-3 whitespace-pre-wrap break-all">
+                {pair.left.type === 'delete' && (
+                  <span className="text-danger-100 select-none mr-1">−</span>
+                )}
+                {pair.left.type !== 'empty' && (
+                  <span 
+                    className="text-text-100"
+                    dangerouslySetInnerHTML={{ __html: pair.left.highlightedContent || escapeHtml(pair.left.content) }} 
+                  />
+                )}
+                {pair.left.type === 'empty' && <span>&nbsp;</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Right panel */}
+      <div className="flex-1">
+        <div className="font-mono text-[13px] leading-6">
+          {pairedLines.map((pair, idx) => (
+            <div
+              key={idx}
+              className={`flex ${getLineBgClass(pair.right.type)}`}
+            >
+              <div className="w-12 shrink-0 px-2 text-right text-text-500 select-none">
+                {pair.right.lineNo}
+              </div>
+              <div className="flex-1 px-3 whitespace-pre-wrap break-all">
+                {pair.right.type === 'add' && (
+                  <span className="text-success-100 select-none mr-1">+</span>
+                )}
+                {pair.right.type !== 'empty' && (
+                  <span 
+                    className="text-text-100"
+                    dangerouslySetInnerHTML={{ __html: pair.right.highlightedContent || escapeHtml(pair.right.content) }} 
+                  />
+                )}
+                {pair.right.type === 'empty' && <span>&nbsp;</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 })
 
@@ -298,66 +278,53 @@ const UnifiedDiffView = memo(function UnifiedDiffView({ before, after }: DiffVie
   }, [before, after])
 
   if (lines.length === 0) {
-    return <div className="p-4 text-text-400 text-sm">No changes</div>
+    return <div className="p-8 text-text-400 text-sm text-center">No changes</div>
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <table className="w-full border-collapse text-[13px] font-mono leading-5">
-        <colgroup>
-          <col className="w-12" />
-          <col className="w-12" />
-          <col />
-        </colgroup>
-        <tbody>
-          {lines.map((line, idx) => {
-            const bgClass = line.type === 'add' ? 'bg-success-bg' :
-                           line.type === 'delete' ? 'bg-danger-bg' : ''
-            return (
-              <tr key={idx} className="border-b border-border-100/50">
-                <td className={`px-2 py-0 text-right text-text-500 select-none align-top border-r border-border-100 ${bgClass}`}>
-                  {line.type !== 'add' && line.oldLineNo}
-                </td>
-                <td className={`px-2 py-0 text-right text-text-500 select-none align-top border-r border-border-100 ${bgClass}`}>
-                  {line.type !== 'delete' && line.newLineNo}
-                </td>
-                <td className={`px-3 py-0 whitespace-pre-wrap break-all align-top ${bgClass}`}>
-                  {line.type === 'add' && (
-                    <span className="inline-block w-4 text-success-100 select-none">+</span>
-                  )}
-                  {line.type === 'delete' && (
-                    <span className="inline-block w-4 text-danger-100 select-none">−</span>
-                  )}
-                  {line.type === 'context' && (
-                    <span className="inline-block w-4 text-text-500 select-none"> </span>
-                  )}
-                  <span 
-                    className="text-text-100"
-                    dangerouslySetInnerHTML={{ __html: line.highlightedContent || escapeHtml(line.content) }} 
-                  />
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="max-w-5xl mx-auto font-mono text-[13px] leading-6">
+      {lines.map((line, idx) => (
+        <div
+          key={idx}
+          className={`flex ${getLineBgClass(line.type)}`}
+        >
+          <div className="w-12 shrink-0 px-2 text-right text-text-500 select-none">
+            {line.oldLineNo}
+          </div>
+          <div className="w-12 shrink-0 px-2 text-right text-text-500 select-none">
+            {line.newLineNo}
+          </div>
+          <div className="flex-1 px-3 whitespace-pre-wrap break-all">
+            {line.type === 'add' && (
+              <span className="text-success-100 select-none mr-1">+</span>
+            )}
+            {line.type === 'delete' && (
+              <span className="text-danger-100 select-none mr-1">−</span>
+            )}
+            <span 
+              className="text-text-100"
+              dangerouslySetInnerHTML={{ __html: line.highlightedContent || escapeHtml(line.content) }} 
+            />
+          </div>
+        </div>
+      ))}
     </div>
   )
 })
 
 // ============================================
-// Diff 计算逻辑
+// Helpers
 // ============================================
 
-interface UnifiedLine extends DiffLine {
-  oldLineNo?: number
-  newLineNo?: number
+function getLineBgClass(type: LineType): string {
+  switch (type) {
+    case 'add': return 'bg-success-bg/50'
+    case 'delete': return 'bg-danger-bg/50'
+    case 'empty': return 'bg-bg-100/30'
+    default: return ''
+  }
 }
 
-/**
- * 计算配对行（用于 Split view）
- * 智能配对相邻的删除/添加行
- */
 function computePairedLines(before: string, after: string): PairedLine[] {
   const changes = diffLines(before, after)
   const result: PairedLine[] = []
@@ -374,18 +341,15 @@ function computePairedLines(before: string, after: string): PairedLine[] {
     const count = change.count || 0
     
     if (change.removed) {
-      // 查看下一个是否是 added，可以配对
       const next = changes[i + 1]
       if (next && next.added) {
         const addCount = next.count || 0
         const maxCount = Math.max(count, addCount)
         
-        // 配对删除和添加
         for (let j = 0; j < maxCount; j++) {
           const oldLine = j < count ? beforeLines[oldIdx + j] : undefined
           const newLine = j < addCount ? afterLines[newIdx + j] : undefined
           
-          // 计算行内差异
           let leftHighlight: string | undefined
           let rightHighlight: string | undefined
           if (oldLine !== undefined && newLine !== undefined) {
@@ -406,11 +370,10 @@ function computePairedLines(before: string, after: string): PairedLine[] {
         
         oldIdx += count
         newIdx += addCount
-        i += 2 // 跳过 added
+        i += 2
         continue
       }
       
-      // 只有删除，没有配对的添加
       for (let j = 0; j < count; j++) {
         result.push({
           left: { type: 'delete', content: beforeLines[oldIdx + j] || '', lineNo: oldIdx + j + 1 },
@@ -420,7 +383,6 @@ function computePairedLines(before: string, after: string): PairedLine[] {
       oldIdx += count
       
     } else if (change.added) {
-      // 只有添加（前面没有删除配对）
       for (let j = 0; j < count; j++) {
         result.push({
           left: { type: 'empty', content: '' },
@@ -430,7 +392,6 @@ function computePairedLines(before: string, after: string): PairedLine[] {
       newIdx += count
       
     } else {
-      // 上下文行
       for (let j = 0; j < count; j++) {
         result.push({
           left: { type: 'context', content: beforeLines[oldIdx + j] || '', lineNo: oldIdx + j + 1 },
@@ -447,9 +408,6 @@ function computePairedLines(before: string, after: string): PairedLine[] {
   return result
 }
 
-/**
- * 计算统一视图的行
- */
 function computeUnifiedLines(before: string, after: string): UnifiedLine[] {
   const changes = diffLines(before, after)
   const result: UnifiedLine[] = []
@@ -498,9 +456,6 @@ function computeUnifiedLines(before: string, after: string): UnifiedLine[] {
   return result
 }
 
-/**
- * 计算行内单词差异，返回带高亮标记的 HTML
- */
 function computeWordDiff(oldLine: string, newLine: string): { left: string; right: string } {
   const changes = diffWords(oldLine, newLine)
   
@@ -511,9 +466,9 @@ function computeWordDiff(oldLine: string, newLine: string): { left: string; righ
     const escaped = escapeHtml(change.value)
     
     if (change.removed) {
-      left += `<span class="bg-danger-100/30 rounded-sm">${escaped}</span>`
+      left += `<mark class="bg-danger-100/40 text-inherit rounded-sm px-0.5">${escaped}</mark>`
     } else if (change.added) {
-      right += `<span class="bg-success-100/30 rounded-sm">${escaped}</span>`
+      right += `<mark class="bg-success-100/40 text-inherit rounded-sm px-0.5">${escaped}</mark>`
     } else {
       left += escaped
       right += escaped
@@ -522,10 +477,6 @@ function computeWordDiff(oldLine: string, newLine: string): { left: string; righ
   
   return { left, right }
 }
-
-// ============================================
-// Helpers
-// ============================================
 
 function extractContentFromUnifiedDiff(diff: string): { before: string, after: string } {
   let before = '', after = ''
