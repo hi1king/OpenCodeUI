@@ -160,6 +160,7 @@ function App() {
                   onThemeChange={setThemeWithAnimation}
                   isWideMode={isWideMode}
                   onToggleWideMode={toggleWideMode}
+                  onOpenSidebar={() => setSidebarExpanded(true)}
                 />
               </div>
             </div>

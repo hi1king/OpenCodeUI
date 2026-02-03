@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { CogIcon, MoreHorizontalIcon, TeachIcon, MaximizeIcon, MinimizeIcon, SunIcon, MoonIcon, SystemIcon, ShareIcon, PanelRightIcon, PanelBottomIcon, ChevronDownIcon } from '../../components/Icons'
+import { CogIcon, MoreHorizontalIcon, TeachIcon, MaximizeIcon, MinimizeIcon, SunIcon, MoonIcon, SystemIcon, ShareIcon, PanelRightIcon, PanelBottomIcon, ChevronDownIcon, SidebarIcon } from '../../components/Icons'
 import { DropdownMenu, MenuItem, IconButton } from '../../components/ui'
 import { ModelSelector } from './ModelSelector'
 import { SettingsDialog } from '../settings/SettingsDialog'
@@ -22,6 +22,7 @@ interface HeaderProps {
   onThemeChange: (mode: ThemeMode, event?: React.MouseEvent) => void
   isWideMode?: boolean
   onToggleWideMode?: () => void
+  onOpenSidebar?: () => void
 }
 
 export function Header({
@@ -33,6 +34,7 @@ export function Header({
   onThemeChange,
   isWideMode,
   onToggleWideMode,
+  onOpenSidebar,
 }: HeaderProps) {
   const { shareUrl, messages, sessionId } = useMessageStore()
   const { rightPanelOpen, bottomPanelOpen } = useLayoutStore()
@@ -115,8 +117,18 @@ export function Header({
   return (
     <div className="h-14 flex justify-between items-center px-4 z-20 bg-bg-100 transition-colors duration-200 relative">
       
-      {/* Left: Model (z-20) */}
+      {/* Left: Mobile Menu + Model (z-20) */}
       <div className="flex items-center gap-2 min-w-0 shrink-1 z-20">
+        {/* Mobile Sidebar Toggle - 只在移动端显示 */}
+        {onOpenSidebar && (
+          <IconButton
+            aria-label="Open sidebar"
+            onClick={onOpenSidebar}
+            className="md:hidden hover:bg-bg-200/50 text-text-400 hover:text-text-100 -ml-2"
+          >
+            <SidebarIcon size={18} />
+          </IconButton>
+        )}
         <ModelSelector
           models={models}
           selectedModelKey={selectedModelKey}
