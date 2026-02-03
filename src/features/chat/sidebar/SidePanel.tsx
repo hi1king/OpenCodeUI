@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState, useEffect } from 'react'
+import { useRef, useCallback, useMemo, useState, useEffect } from 'react'
 import { SessionList } from '../../sessions'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
+import { DropdownMenu, MenuItem } from '../../../components/ui'
 import { 
   SidebarIcon, 
   FolderIcon, 
@@ -8,12 +9,17 @@ import {
   PlusIcon, 
   TrashIcon, 
   SearchIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  CogIcon,
+  TeachIcon,
+  BoltIcon
 } from '../../../components/Icons'
-import { useDirectory } from '../../../hooks'
+import { useDirectory, useSessionStats, formatTokens, formatCost } from '../../../hooks'
 import { useSessionContext } from '../../../contexts/SessionContext'
+import { useMessageStore } from '../../../store'
 import { updateSession, subscribeToConnectionState, type ApiSession, type ConnectionInfo } from '../../../api'
 import { uiErrorHandler } from '../../../utils'
+import type { SessionStats } from '../../../hooks'
 
 // Claude.ai 设计模式：
 // - 按钮结构统一，不因 expanded/collapsed 改变 DOM
@@ -30,6 +36,8 @@ interface SidePanelProps {
   isMobile?: boolean
   isExpanded?: boolean
   onToggleSidebar: () => void
+  contextLimit?: number
+  onOpenSettings?: () => void
 }
 
 interface ProjectItem {
@@ -47,6 +55,8 @@ export function SidePanel({
   isMobile = false,
   isExpanded = true,
   onToggleSidebar,
+  contextLimit = 200000,
+  onOpenSettings,
 }: SidePanelProps) {
   const { currentDirectory, savedDirectories, setCurrentDirectory, removeDirectory } = useDirectory()
   const [connectionState, setConnectionState] = useState<ConnectionInfo | null>(null)
@@ -58,6 +68,11 @@ export function SidePanel({
   const [projectsExpanded, setProjectsExpanded] = useState(false)
   
   const showLabels = isExpanded || isMobile
+  
+  // Session stats
+  const { messages } = useMessageStore()
+  const stats = useSessionStats(contextLimit)
+  const hasMessages = messages.length > 0
   
   useEffect(() => {
     return subscribeToConnectionState(setConnectionState)
@@ -363,24 +378,13 @@ export function SidePanel({
       {!showLabels && <div className="flex-1" />}
       
       {/* ===== Footer ===== */}
-      <div className="shrink-0 border-t border-border-200/30">
-        <div 
-          className="h-10 flex items-center transition-all duration-300 ease-out mx-2 px-4"
-        >
-          <div 
-            className="flex items-center gap-2 transition-transform duration-300"
-            style={{ transform: showLabels ? 'none' : 'translateX(-8px)' }}
-          >
-            <ConnectionIndicator state={connectionState?.state || 'disconnected'} />
-            <span 
-              className="text-xs text-text-400 whitespace-nowrap transition-opacity duration-300"
-              style={{ opacity: showLabels ? 1 : 0 }}
-            >
-              {connectionState?.state === 'connected' ? 'Connected' : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </div>
+      <SidebarFooter
+        showLabels={showLabels}
+        connectionState={connectionState?.state || 'disconnected'}
+        stats={stats}
+        hasMessages={hasMessages}
+        onOpenSettings={onOpenSettings}
+      />
 
       {/* Confirm Dialog */}
       <ConfirmDialog
@@ -402,16 +406,138 @@ export function SidePanel({
 }
 
 // ============================================
-// Connection Indicator
+// Sidebar Footer Component
 // ============================================
 
-function ConnectionIndicator({ state }: { state: string }) {
-  const colorClass = {
+interface SidebarFooterProps {
+  showLabels: boolean
+  connectionState: string
+  stats: SessionStats
+  hasMessages: boolean
+  onOpenSettings?: () => void
+}
+
+function SidebarFooter({ 
+  showLabels, 
+  connectionState, 
+  stats, 
+  hasMessages,
+  onOpenSettings 
+}: SidebarFooterProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  
+  // Close menu when sidebar collapses/expands
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [showLabels])
+
+  // Connection Status Color
+  const statusColor = {
     connected: 'bg-success-100',
     connecting: 'bg-warning-100 animate-pulse',
     disconnected: 'bg-text-500',
     error: 'bg-danger-100',
-  }[state] || 'bg-text-500'
+  }[connectionState] || 'bg-text-500'
 
-  return <div className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
+  const statsColor = stats.contextPercent >= 90 ? 'bg-danger-100' :
+                     stats.contextPercent >= 70 ? 'bg-warning-100' : 
+                     'bg-accent-main-100'
+
+  return (
+    <div className="shrink-0 border-t border-border-200/30 p-2">
+      <button
+        ref={triggerRef}
+        onClick={() => setMenuOpen(!menuOpen)}
+        className={`
+          group w-full flex items-center gap-2 p-2 rounded-lg
+          hover:bg-bg-200/50 active:bg-bg-200 transition-colors outline-none
+          ${menuOpen ? 'bg-bg-200/50' : ''}
+        `}
+        title="Account & Status"
+      >
+        {/* Avatar Area */}
+        <div className="relative shrink-0 w-8 h-8">
+          <div className="w-full h-full rounded-full bg-text-200 flex items-center justify-center text-bg-100 font-bold text-sm select-none">
+            O
+          </div>
+          {/* Status Dot - Bottom Right */}
+          <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[2px] border-bg-100 ${statusColor}`} />
+        </div>
+
+        {/* User Info - Visible when expanded */}
+        <div 
+          className="flex-1 flex flex-col items-start min-w-0 transition-opacity duration-300"
+          style={{ opacity: showLabels ? 1 : 0, width: showLabels ? 'auto' : 0, overflow: 'hidden' }}
+        >
+          <span className="text-sm font-medium text-text-100 truncate w-full text-left">
+            Opencode
+          </span>
+          <span className="text-xs text-text-400 truncate w-full text-left">
+            Free Plan
+          </span>
+        </div>
+      </button>
+
+      {/* Dropdown Menu */}
+      <DropdownMenu
+        triggerRef={triggerRef}
+        isOpen={menuOpen}
+        position="top"
+        align="left"
+        width={260}
+      >
+        <div className="py-1">
+          {/* Context Stats Section */}
+          <div className="px-3 py-2">
+            <div className="flex items-center justify-between text-xs text-text-400 mb-1.5">
+              <span className="font-bold uppercase tracking-wider">Context</span>
+              {hasMessages && (
+                <span className="font-mono">
+                  {Math.round(stats.contextPercent)}%
+                </span>
+              )}
+            </div>
+            
+            {hasMessages ? (
+              <>
+                <div className="w-full h-1.5 bg-bg-300 rounded-full overflow-hidden mb-2">
+                  <div 
+                    className={`h-full ${statsColor} transition-all duration-300`} 
+                    style={{ width: `${Math.min(100, stats.contextPercent)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-text-400 font-mono">
+                  <span>{formatTokens(stats.contextUsed)} / {formatTokens(stats.contextLimit)}</span>
+                  <span>{formatCost(stats.totalCost)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-text-500 italic">No context used</div>
+            )}
+          </div>
+
+          <div className="h-px bg-border-200/50 my-1" />
+
+          {/* Menu Items */}
+          <MenuItem
+            icon={<CogIcon size={16} />}
+            label="Settings"
+            onClick={() => { setMenuOpen(false); onOpenSettings?.(); }}
+          />
+          <MenuItem
+            icon={<TeachIcon size={16} />}
+            label="Help & Feedback"
+            onClick={() => setMenuOpen(false)}
+          />
+          <MenuItem
+            icon={<BoltIcon size={16} />}
+            label="Connection"
+            description={connectionState}
+            onClick={() => {}} // Could open connection logs or retry
+          />
+        </div>
+      </DropdownMenu>
+    </div>
+  )
 }

@@ -2,15 +2,13 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { CogIcon, MoreHorizontalIcon, TeachIcon, MaximizeIcon, MinimizeIcon, SunIcon, MoonIcon, SystemIcon, ShareIcon, PanelRightIcon, PanelBottomIcon, ChevronDownIcon, SidebarIcon } from '../../components/Icons'
 import { DropdownMenu, MenuItem, IconButton } from '../../components/ui'
 import { ModelSelector } from './ModelSelector'
-import { SettingsDialog } from '../settings/SettingsDialog'
 import { ShareDialog } from './ShareDialog'
 import { useMessageStore } from '../../store'
 import { useLayoutStore, layoutStore } from '../../store/layoutStore'
-import { useSessionStats, formatTokens, formatCost } from '../../hooks'
 import { useSessionContext } from '../../contexts/SessionContext'
 import { updateSession } from '../../api'
 import { uiErrorHandler } from '../../utils'
-import type { ThemeMode, SessionStats } from '../../hooks'
+import type { ThemeMode } from '../../hooks'
 import type { ModelInfo } from '../../api'
 
 interface HeaderProps {
@@ -23,6 +21,7 @@ interface HeaderProps {
   isWideMode?: boolean
   onToggleWideMode?: () => void
   onOpenSidebar?: () => void
+  onOpenSettings?: () => void
 }
 
 export function Header({
@@ -35,13 +34,13 @@ export function Header({
   isWideMode,
   onToggleWideMode,
   onOpenSidebar,
+  onOpenSettings,
 }: HeaderProps) {
-  const { shareUrl, messages, sessionId } = useMessageStore()
+  const { shareUrl, sessionId } = useMessageStore()
   const { rightPanelOpen, bottomPanelOpen } = useLayoutStore()
   const { sessions, refresh } = useSessionContext()
   
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -57,14 +56,6 @@ export function Header({
     [sessions, sessionId]
   )
   const sessionTitle = currentSession?.title || 'New Chat'
-
-  const selectedModel = useMemo(() => {
-    if (!selectedModelKey) return null
-    return models.find(m => `${m.providerId}:${m.id}` === selectedModelKey) || null
-  }, [models, selectedModelKey])
-
-  const stats = useSessionStats(selectedModel?.contextLimit || 200000)
-  const hasMessages = messages.length > 0
 
   // Editing Logic
   useEffect(() => {
@@ -179,15 +170,8 @@ export function Header({
         </div>
       </div>
 
-      {/* Right: Stats, Settings, Panels (z-20) */}
+      {/* Right: Settings, Panels (z-20) */}
       <div className="flex items-center gap-1 pointer-events-auto shrink-0 z-20">
-        
-        {/* Stats Badge (Pill) */}
-        {hasMessages && (
-          <div className="hidden lg:flex mr-2">
-            <StatsBadge stats={stats} />
-          </div>
-        )}
 
         <div className="w-px h-4 bg-border-200/50 mx-1 hidden sm:block" />
 
@@ -255,7 +239,7 @@ export function Header({
               <MenuItem
                 icon={<CogIcon />}
                 label="Settings"
-                onClick={() => { setSettingsMenuOpen(false); setSettingsDialogOpen(true); }}
+                onClick={() => { setSettingsMenuOpen(false); onOpenSettings?.(); }}
               />
               <MenuItem
                 icon={<TeachIcon />}
@@ -286,84 +270,10 @@ export function Header({
         </div>
       </div>
 
-      <SettingsDialog
-        isOpen={settingsDialogOpen}
-        onClose={() => setSettingsDialogOpen(false)}
-        themeMode={themeMode}
-        onThemeChange={onThemeChange}
-        isWideMode={isWideMode}
-        onToggleWideMode={onToggleWideMode}
-      />
-
       <ShareDialog isOpen={shareDialogOpen} onClose={() => setShareDialogOpen(false)} />
 
       {/* Smooth gradient - z-10 */}
       <div className="absolute top-full left-0 right-0 h-8 bg-gradient-to-b from-bg-100 to-transparent pointer-events-none z-10" />
-    </div>
-  )
-}
-
-// ============================================
-// Stats Badge Component (Bordered Pill)
-// ============================================
-
-function StatsBadge({ stats }: { stats: SessionStats }) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  
-  const getColor = (percent: number) => {
-    if (percent >= 90) return 'bg-danger-100'
-    if (percent >= 70) return 'bg-warning-100'
-    return 'bg-accent-main-100'
-  }
-  
-  const color = getColor(stats.contextPercent)
-  
-  return (
-    <div 
-      className="relative flex items-center group/stats"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-      onClick={(e) => e.stopPropagation()} 
-    >
-      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border-200/50 hover:bg-bg-200/50 transition-colors cursor-default">
-        <div className={`w-1.5 h-1.5 rounded-full ${color} opacity-80`} />
-        <span className="text-[10px] font-mono text-text-400 group-hover/stats:text-text-200 transition-colors">
-          {Math.round(stats.contextPercent)}%
-        </span>
-      </div>
-
-      {/* Detailed Tooltip - High Z-index */}
-      {showTooltip && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-[100] cursor-default">
-          <div className="bg-bg-100 border border-border-200 rounded-lg shadow-xl px-3 py-2 min-w-[180px]">
-            <div className="text-[10px] font-bold text-text-400 uppercase tracking-wider mb-2">
-              Session Stats
-            </div>
-            <div className="space-y-1.5 text-xs text-text-200">
-              <div className="flex justify-between">
-                <span className="text-text-400">Context</span>
-                <span className="font-mono">{formatTokens(stats.contextUsed)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-text-400">Limit</span>
-                <span className="font-mono">{formatTokens(stats.contextLimit)}</span>
-              </div>
-              <div className="w-full h-1 bg-bg-300 rounded-full overflow-hidden my-1">
-                <div 
-                  className={`h-full ${color}`} 
-                  style={{ width: `${Math.min(100, stats.contextPercent)}%` }}
-                />
-              </div>
-              <div className="border-t border-border-200/50 my-1.5" />
-              <div className="flex justify-between">
-                <span className="text-text-400">Cost</span>
-                <span className="font-mono">{formatCost(stats.totalCost)}</span>
-              </div>
-            </div>
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-bg-100 border-l border-t border-border-200 rotate-45" />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

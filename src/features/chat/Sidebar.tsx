@@ -16,6 +16,8 @@ interface SidebarProps {
   onNewSession: () => void
   onOpen: () => void
   onClose: () => void
+  contextLimit?: number
+  onOpenSettings?: () => void
 }
 
 export const Sidebar = memo(function Sidebar({
@@ -25,6 +27,8 @@ export const Sidebar = memo(function Sidebar({
   onNewSession,
   onOpen,
   onClose,
+  contextLimit,
+  onOpenSettings,
 }: SidebarProps) {
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false)
   const { addDirectory, pathInfo } = useDirectory()
@@ -160,6 +164,8 @@ export const Sidebar = memo(function Sidebar({
             isMobile={true}
             isExpanded={true}  // 移动端展开时始终是 expanded 状态
             onToggleSidebar={onClose}  // 移动端 toggle 就是关闭
+            contextLimit={contextLimit}
+            onOpenSettings={onOpenSettings}
           />
         </div>
 
@@ -197,6 +203,8 @@ export const Sidebar = memo(function Sidebar({
           isMobile={false}
           isExpanded={isOpen}
           onToggleSidebar={handleToggle}
+          contextLimit={contextLimit}
+          onOpenSettings={onOpenSettings}
         />
 
         {/* Resizer Handle (Desktop only, when expanded) */}

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Header, InputBox, PermissionDialog, QuestionDialog, Sidebar, ChatArea, type ChatAreaHandle } from './features/chat'
+import { SettingsDialog } from './features/settings/SettingsDialog'
 import { RightPanel } from './components/RightPanel'
 import { BottomPanel } from './components/BottomPanel'
 import { useTheme, useModels, useModelSelection, useChatSession } from './hooks'
@@ -45,6 +46,13 @@ function App() {
       return next
     })
   }, [])
+
+  // ============================================
+  // Settings Dialog
+  // ============================================
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const openSettings = useCallback(() => setSettingsDialogOpen(true), [])
+  const closeSettings = useCallback(() => setSettingsDialogOpen(false), [])
 
   // ============================================
   // Chat Session
@@ -140,6 +148,8 @@ function App() {
         onNewSession={handleNewSession}
         onOpen={() => setSidebarExpanded(true)}
         onClose={() => setSidebarExpanded(false)}
+        contextLimit={currentModel?.contextLimit}
+        onOpenSettings={openSettings}
       />
 
       {/* Main Content Area: Chat Column + Right Panel */}
@@ -161,6 +171,7 @@ function App() {
                   isWideMode={isWideMode}
                   onToggleWideMode={toggleWideMode}
                   onOpenSidebar={() => setSidebarExpanded(true)}
+                  onOpenSettings={openSettings}
                 />
               </div>
             </div>
@@ -239,6 +250,16 @@ function App() {
         {/* Right Panel - 占满整个高度 */}
         <RightPanel />
       </div>
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        isOpen={settingsDialogOpen}
+        onClose={closeSettings}
+        themeMode={themeMode}
+        onThemeChange={setThemeWithAnimation}
+        isWideMode={isWideMode}
+        onToggleWideMode={toggleWideMode}
+      />
     </div>
   )
 }
