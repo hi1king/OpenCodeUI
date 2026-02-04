@@ -55,10 +55,11 @@ export const CodeBlock = memo(function CodeBlock({
               <code>{code}</code>
             </pre>
           ) : (
-            <div 
-              className="shiki-wrapper text-xs leading-relaxed [&_pre]:p-2 [&_pre]:m-0 [&_pre]:bg-transparent! [&_code]:font-mono"
-              dangerouslySetInnerHTML={{ __html: html as string }}
-            />
+          <div
+            className="shiki-wrapper text-xs leading-relaxed [&_pre]:p-2 [&_pre]:m-0 [&_pre]:bg-transparent! [&_code]:font-mono"
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: html as string }}
+          />
           )}
         </div>
       </div>
@@ -86,8 +87,9 @@ export const CodeBlock = memo(function CodeBlock({
             <code>{code}</code>
           </pre>
         ) : (
-          <div 
+          <div
             className="shiki-wrapper text-xs [&_pre]:p-3 [&_pre]:m-0 [&_pre]:bg-transparent! [&_code]:font-mono"
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{ __html: html as string }}
           />
         )}

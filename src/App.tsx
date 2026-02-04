@@ -4,6 +4,7 @@ import { SettingsDialog } from './features/settings/SettingsDialog'
 import { RightPanel } from './components/RightPanel'
 import { BottomPanel } from './components/BottomPanel'
 import { useTheme, useModels, useModelSelection, useChatSession, useGlobalKeybindings } from './hooks'
+import { THEME_ANIMATION_MAX_MESSAGES } from './constants'
 import type { KeybindingHandlers } from './hooks/useKeybindings'
 import { layoutStore } from './store/layoutStore'
 import { STORAGE_KEY_WIDE_MODE } from './constants'
@@ -103,6 +104,8 @@ function App() {
     handleNewSession,
   } = useChatSession({ chatAreaRef, currentModel })
 
+  const isHeavyUi = messages.length >= THEME_ANIMATION_MAX_MESSAGES
+
   // ============================================
   // Model Restoration Effect
   // ============================================
@@ -183,7 +186,7 @@ function App() {
         contextLimit={currentModel?.contextLimit}
         onOpenSettings={openSettings}
         themeMode={themeMode}
-        onThemeChange={setThemeWithAnimation}
+        onThemeChange={(mode, event) => setThemeWithAnimation(mode, event, { isHeavy: isHeavyUi })}
         isWideMode={isWideMode}
         onToggleWideMode={toggleWideMode}
       />
@@ -287,7 +290,7 @@ function App() {
         isOpen={settingsDialogOpen}
         onClose={closeSettings}
         themeMode={themeMode}
-        onThemeChange={setThemeWithAnimation}
+        onThemeChange={(mode, event) => setThemeWithAnimation(mode, event, { isHeavy: isHeavyUi })}
         isWideMode={isWideMode}
         onToggleWideMode={toggleWideMode}
       />

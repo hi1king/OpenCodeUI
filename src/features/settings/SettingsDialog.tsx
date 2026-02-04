@@ -4,14 +4,14 @@ import { Button } from '../../components/ui/Button'
 import { 
   SunIcon, MoonIcon, SystemIcon, MaximizeIcon, MinimizeIcon, 
   PathAutoIcon, PathUnixIcon, PathWindowsIcon,
-  GlobeIcon, PlusIcon, TrashIcon, CheckIcon, WifiIcon, WifiOffIcon, SpinnerIcon
+  GlobeIcon, PlusIcon, TrashIcon, CheckIcon, WifiIcon, WifiOffIcon, SpinnerIcon, KeyIcon
 } from '../../components/Icons'
 import { usePathMode, useServerStore } from '../../hooks'
 import { autoApproveStore } from '../../store'
 import { KeybindingsSection } from './KeybindingsSection'
 import type { ThemeMode } from '../../hooks'
 import type { PathMode } from '../../utils/directoryUtils'
-import type { ServerConfig, ServerHealth } from '../../store/serverStore'
+import type { ServerConfig, ServerHealth, ServerAuth } from '../../store/serverStore'
 
 // ============================================
 // Settings Dialog Props
@@ -49,7 +49,22 @@ function ServerItem({ server, health, isActive, onSelect, onDelete, onCheckHealt
     if (health.status === 'online') {
       return <WifiIcon size={12} className="text-green-500" />
     }
+    if (health.status === 'unauthorized') {
+      return <KeyIcon size={12} className="text-yellow-500" />
+    }
     return <WifiOffIcon size={12} className="text-red-400" />
+  }
+  
+  const getHealthTitle = () => {
+    if (!health) return 'Check health'
+    switch (health.status) {
+      case 'checking': return 'Checking...'
+      case 'online': return `Online (${health.latency}ms)${health.version ? ` v${health.version}` : ''}`
+      case 'unauthorized': return 'Invalid credentials'
+      case 'offline': return health.error || 'Server offline'
+      case 'error': return health.error || 'Connection error'
+      default: return 'Unknown status'
+    }
   }
   
   return (
@@ -73,6 +88,7 @@ function ServerItem({ server, health, isActive, onSelect, onDelete, onCheckHealt
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-text-100 truncate">{server.name}</span>
           {isActive && <CheckIcon size={14} className="text-accent-main-100 shrink-0" />}
+          {server.auth && <span title="Authenticated"><KeyIcon size={12} className="text-text-400 shrink-0" /></span>}
         </div>
         <div className="text-xs text-text-400 truncate font-mono">{server.url}</div>
       </div>
@@ -82,7 +98,7 @@ function ServerItem({ server, health, isActive, onSelect, onDelete, onCheckHealt
         <button 
           className="p-1.5 rounded-md hover:bg-bg-200 transition-colors"
           onClick={(e) => { e.stopPropagation(); onCheckHealth() }}
-          title={health?.status === 'online' ? `Online (${health.latency}ms)` : health?.error || 'Check health'}
+          title={getHealthTitle()}
         >
           {healthIcon()}
         </button>
@@ -107,14 +123,17 @@ function ServerItem({ server, health, isActive, onSelect, onDelete, onCheckHealt
 // ============================================
 
 interface AddServerFormProps {
-  onAdd: (name: string, url: string) => void
+  onAdd: (name: string, url: string, auth?: ServerAuth) => void
   onCancel: () => void
 }
 
 function AddServerForm({ onAdd, onCancel }: AddServerFormProps) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showAuth, setShowAuth] = useState(false)
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -137,7 +156,12 @@ function AddServerForm({ onAdd, onCancel }: AddServerFormProps) {
       return
     }
     
-    onAdd(name.trim(), url.trim())
+    // Build auth if provided
+    const auth: ServerAuth | undefined = (username.trim() && password.trim())
+      ? { username: username.trim(), password: password.trim() }
+      : undefined
+    
+    onAdd(name.trim(), url.trim(), auth)
   }
   
   return (
@@ -163,6 +187,44 @@ function AddServerForm({ onAdd, onCancel }: AddServerFormProps) {
           className="w-full px-3 py-2 text-sm bg-bg-000 border border-border-200 rounded-lg focus:outline-none focus:border-accent-main-100 text-text-100 placeholder:text-text-400 font-mono"
         />
       </div>
+      
+      {/* Authentication Section */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAuth(!showAuth)}
+          className="flex items-center gap-1 text-xs text-text-400 hover:text-text-200 transition-colors"
+        >
+          <KeyIcon size={12} />
+          <span>{showAuth ? 'Hide' : 'Show'} Authentication</span>
+        </button>
+        
+        {showAuth && (
+          <div className="mt-2 space-y-2 pl-4 border-l-2 border-border-200">
+            <div>
+              <label className="block text-xs font-medium text-text-300 mb-1">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setError('') }}
+                placeholder="opencode"
+                className="w-full px-3 py-2 text-sm bg-bg-000 border border-border-200 rounded-lg focus:outline-none focus:border-accent-main-100 text-text-100 placeholder:text-text-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-300 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError('') }}
+                placeholder="••••••"
+                className="w-full px-3 py-2 text-sm bg-bg-000 border border-border-200 rounded-lg focus:outline-none focus:border-accent-main-100 text-text-100 placeholder:text-text-400"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+      
       {error && <p className="text-xs text-danger-100">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
@@ -225,9 +287,11 @@ export function SettingsDialog({
     }
   }
   
-  const handleAddServer = (name: string, url: string) => {
-    addServer({ name, url })
+  const handleAddServer = (name: string, url: string, auth?: ServerAuth) => {
+    const server = addServer({ name, url, auth })
     setIsAddingServer(false)
+    // 自动检查新添加服务器的健康状态
+    checkHealth(server.id)
   }
   
   const handleServerChange = (serverId: string) => {

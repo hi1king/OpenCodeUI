@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import { STORAGE_KEY_THEME_MODE } from '../constants'
+import { STORAGE_KEY_THEME_MODE, THEME_SWITCH_DISABLE_MS } from '../constants'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 
-export function useTheme() {
+export function useTheme(options?: { disableAnimation?: boolean; isHeavy?: boolean }) {
   const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_THEME_MODE)
     return (saved as ThemeMode) || 'system'
@@ -23,17 +23,11 @@ export function useTheme() {
   // 应用主题到 DOM
   useEffect(() => {
     const root = document.documentElement
-    
-    // 如果是 View Transition 触发的，跳过 CSS 过渡类
-    if (skipNextTransitionRef.current) {
+    const shouldSkip = skipNextTransitionRef.current || options?.disableAnimation || options?.isHeavy
+
+    if (shouldSkip) {
+      root.setAttribute('data-theme-transition', 'off')
       skipNextTransitionRef.current = false
-    } else {
-      // 添加过渡类
-      root.classList.add('theme-transitioning')
-      // 移除过渡类
-      setTimeout(() => {
-        root.classList.remove('theme-transitioning')
-      }, 300)
     }
     
     if (mode === 'system') {
@@ -42,8 +36,14 @@ export function useTheme() {
       root.setAttribute('data-mode', mode)
     }
 
+    if (shouldSkip) {
+      setTimeout(() => {
+        root.removeAttribute('data-theme-transition')
+      }, THEME_SWITCH_DISABLE_MS)
+    }
+
     localStorage.setItem(STORAGE_KEY_THEME_MODE, mode)
-  }, [mode])
+  }, [mode, options?.disableAnimation, options?.isHeavy])
 
   // 监听系统主题变化
   useEffect(() => {
@@ -53,6 +53,7 @@ export function useTheme() {
       // 仅在 system 模式下需要触发重渲染
       if (mode === 'system') {
         // 强制重渲染
+        skipNextTransitionRef.current = true
         setMode('system')
       }
     }
@@ -62,10 +63,12 @@ export function useTheme() {
   }, [mode])
 
   const setTheme = useCallback((newMode: ThemeMode) => {
+    skipNextTransitionRef.current = true
     setMode(newMode)
   }, [])
 
   const toggleTheme = useCallback(() => {
+    skipNextTransitionRef.current = true
     setMode(prev => {
       if (prev === 'system') return 'dark'
       if (prev === 'dark') return 'light'
@@ -73,10 +76,20 @@ export function useTheme() {
     })
   }, [])
 
-  const setThemeWithAnimation = useCallback((newMode: ThemeMode, event?: React.MouseEvent) => {
+  const setThemeWithAnimation = useCallback((newMode: ThemeMode, event?: React.MouseEvent, meta?: { isHeavy?: boolean }) => {
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const shouldDisableAnimation = prefersReducedMotion || options?.disableAnimation || options?.isHeavy || meta?.isHeavy
+
     // @ts-ignore - View Transitions API types might not be available
-    if (!document.startViewTransition || !event) {
+    if (shouldDisableAnimation || !document.startViewTransition || !event) {
+      skipNextTransitionRef.current = true
+      const root = document.documentElement
+      root.setAttribute('data-theme-transition', 'off')
       setMode(newMode)
+      setTimeout(() => {
+        root.removeAttribute('data-theme-transition')
+      }, THEME_SWITCH_DISABLE_MS)
       return
     }
 
@@ -86,6 +99,9 @@ export function useTheme() {
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y)
     )
+
+    const root = document.documentElement
+    root.setAttribute('data-theme-transition', 'off')
 
     // @ts-ignore
     const transition = document.startViewTransition(() => {
@@ -104,13 +120,17 @@ export function useTheme() {
           ],
         },
         {
-          duration: 500,
+          duration: 350,
           easing: 'ease-in-out',
           pseudoElement: '::view-transition-new(root)',
         }
       )
+    }).finally(() => {
+      setTimeout(() => {
+        root.removeAttribute('data-theme-transition')
+      }, THEME_SWITCH_DISABLE_MS)
     })
-  }, [])
+  }, [options?.disableAnimation, options?.isHeavy])
 
   return {
     mode,
@@ -118,6 +138,7 @@ export function useTheme() {
     setTheme,
     toggleTheme,
     setThemeWithAnimation,
+    setThemeImmediate: setTheme,
     isDark: resolvedTheme === 'dark',
   }
 }

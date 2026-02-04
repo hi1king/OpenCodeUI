@@ -53,3 +53,13 @@ export const LAG_THRESHOLD_MEDIUM = 150
 
 /** 滞后阈值 - 大 */
 export const LAG_THRESHOLD_LARGE = 300
+
+// ============================================
+// Theme Switch Performance
+// ============================================
+
+/** 主题切换时禁用过渡的时间窗口 */
+export const THEME_SWITCH_DISABLE_MS = 200
+
+/** 超过该消息数时禁用 View Transition 动画 */
+export const THEME_ANIMATION_MAX_MESSAGES = 120

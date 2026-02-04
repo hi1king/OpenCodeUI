@@ -255,6 +255,7 @@ const CodeRenderer = memo(function CodeRenderer({ content, language, isError }: 
           [&_code]:font-mono leading-relaxed
           ${isError ? '[&_span]:!text-danger-100' : ''}
         `}
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: html as string }}
       />
     )
@@ -505,7 +506,10 @@ const DiffRenderer = memo(function DiffRenderer({ before, after, unifiedDiff, la
               {line.type !== 'delete' && line.newLineNo}
             </td>
             {/* Content with inline +/- indicator */}
-            <td className={`px-3 py-0.5 font-mono whitespace-pre break-all align-top relative ${rowBgClass}`}>
+            <td
+              className={`px-3 py-0.5 font-mono whitespace-pre break-all align-top relative ${rowBgClass}`}
+              suppressHydrationWarning
+            >
               {/* +/- indicator */}
               {(line.type === 'add' || line.type === 'delete') && (
                 <span className={`absolute left-0.5 select-none font-bold opacity-70 ${

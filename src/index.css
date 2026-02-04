@@ -387,9 +387,11 @@ body {
   font-family: var(--font-ui-sans);
 }
 
-/* Theme Switch Transition - Optimized */
-.theme-transitioning {
-  transition: background-color 0.3s ease, color 0.3s ease !important;
+/* Disable all transitions during theme switch */
+[data-theme-transition="off"] *,
+[data-theme-transition="off"] {
+  transition: none !important;
+  animation: none !important;
 }
 
 /* Theme View Transition (Circular Reveal) */

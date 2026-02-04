@@ -5,6 +5,14 @@
 import { API_BASE_URL } from '../constants'
 
 /**
+ * 服务器认证配置
+ */
+export interface ServerAuth {
+  username: string
+  password: string
+}
+
+/**
  * 服务器配置
  */
 export interface ServerConfig {
@@ -12,16 +20,26 @@ export interface ServerConfig {
   name: string         // 显示名称
   url: string          // 服务器 URL (不含尾部斜杠)
   isDefault?: boolean  // 是否为默认服务器
+  auth?: ServerAuth    // 认证信息 (HTTP Basic Auth)
 }
 
 /**
  * 服务器健康状态
  */
 export interface ServerHealth {
-  status: 'checking' | 'online' | 'offline' | 'error'
+  status: 'checking' | 'online' | 'offline' | 'error' | 'unauthorized'
   latency?: number     // 响应延迟 (ms)
   lastCheck?: number   // 上次检查时间戳
   error?: string       // 错误信息
+  version?: string     // 服务器版本
+}
+
+/**
+ * 生成 Basic Auth header value
+ */
+export function makeBasicAuthHeader(auth: ServerAuth): string {
+  const credentials = btoa(`${auth.username}:${auth.password}`)
+  return `Basic ${credentials}`
 }
 
 type Listener = () => void
@@ -155,6 +173,20 @@ class ServerStore {
   }
   
   /**
+   * 获取当前活动服务器的认证信息
+   */
+  getActiveAuth(): ServerAuth | undefined {
+    return this.getActiveServer()?.auth
+  }
+  
+  /**
+   * 获取指定服务器的认证信息
+   */
+  getServerAuth(serverId: string): ServerAuth | undefined {
+    return this.servers.find(s => s.id === serverId)?.auth
+  }
+  
+  /**
    * 获取服务器健康状态
    */
   getHealth(serverId: string): ServerHealth | null {
@@ -263,8 +295,15 @@ class ServerStore {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000)
       
+      // 构建请求头，如果有认证信息则添加
+      const headers: Record<string, string> = {}
+      if (server.auth) {
+        headers['Authorization'] = makeBasicAuthHeader(server.auth)
+      }
+      
       const response = await fetch(`${server.url}/global/health`, {
         method: 'GET',
+        headers,
         signal: controller.signal,
       })
       
@@ -273,10 +312,31 @@ class ServerStore {
       const latency = Date.now() - startTime
       
       if (response.ok) {
+        // 解析返回的健康信息
+        let version: string | undefined
+        try {
+          const data = await response.json()
+          version = data.version
+        } catch {
+          // ignore parse error
+        }
+        
         const health: ServerHealth = {
           status: 'online',
           latency,
           lastCheck: Date.now(),
+          version,
+        }
+        this.healthMap.set(serverId, health)
+        this.notify()
+        return health
+      } else if (response.status === 401) {
+        // 认证失败
+        const health: ServerHealth = {
+          status: 'unauthorized',
+          latency,
+          lastCheck: Date.now(),
+          error: 'Invalid credentials',
         }
         this.healthMap.set(serverId, health)
         this.notify()

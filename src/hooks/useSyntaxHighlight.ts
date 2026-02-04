@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { codeToHtml, codeToTokens, type BundledTheme } from 'shiki'
 import { normalizeLanguage } from '../utils/languageUtils'
+import { THEME_SWITCH_DISABLE_MS } from '../constants'
 
 // ============================================
 // LRU 缓存层 - 避免重复高亮相同代码
@@ -104,6 +105,13 @@ async function highlightWithCache(
   theme: BundledTheme,
   mode: 'html' | 'tokens'
 ): Promise<string | any[][] | null> {
+  // 主题切换期间短暂跳过高亮，避免大批量重算
+  if (typeof document !== 'undefined') {
+    const transitioning = document.documentElement.getAttribute('data-theme-transition') === 'off'
+    if (transitioning) {
+      return null
+    }
+  }
   // 检查是否应该跳过
   if (shouldSkipHighlight(code)) {
     if (import.meta.env.DEV) {
@@ -270,11 +278,17 @@ export function useSyntaxHighlight(code: string, options: HighlightOptions & { m
   
   const [output, setOutput] = useState<string | any[][] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const prevKeyRef = useRef<{ code: string; lang: string; theme: BundledTheme } | null>(null)
 
   useEffect(() => {
     if (!enabled) return
 
     let cancelled = false
+    const prevKey = prevKeyRef.current
+    const isThemeOnlyChange = !!prevKey && prevKey.code === code && prevKey.lang === normalizedLang && prevKey.theme !== selectedTheme
+    prevKeyRef.current = { code, lang: normalizedLang, theme: selectedTheme }
+
+    const shouldDefer = isThemeOnlyChange
     
     // 先检查缓存 - 同步返回避免闪烁
     const cacheKey = getCacheKey(code, normalizedLang, selectedTheme)
@@ -289,7 +303,9 @@ export function useSyntaxHighlight(code: string, options: HighlightOptions & { m
     }
     
     // 没有缓存，异步高亮
-    setOutput(null)
+    if (!isThemeOnlyChange) {
+      setOutput(null)
+    }
     setIsLoading(true)
 
     async function highlight() {
@@ -307,9 +323,25 @@ export function useSyntaxHighlight(code: string, options: HighlightOptions & { m
       }
     }
 
-    highlight()
+    const schedule = () => {
+      if (shouldDefer) {
+        if (typeof (window as any).requestIdleCallback === 'function') {
+          const idleId = (window as any).requestIdleCallback(() => highlight(), { timeout: THEME_SWITCH_DISABLE_MS * 2 })
+          return () => (window as any).cancelIdleCallback?.(idleId)
+        }
+        const timeoutId = window.setTimeout(() => highlight(), THEME_SWITCH_DISABLE_MS)
+        return () => clearTimeout(timeoutId)
+      }
+      highlight()
+      return () => {}
+    }
 
-    return () => { cancelled = true }
+    const cancelSchedule = schedule()
+
+    return () => {
+      cancelled = true
+      cancelSchedule()
+    }
   }, [code, normalizedLang, selectedTheme, mode, enabled])
 
   return { output, isLoading }

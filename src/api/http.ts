@@ -4,7 +4,7 @@
 // ============================================
 
 import { API_BASE_URL } from '../constants'
-import { serverStore } from '../store/serverStore'
+import { serverStore, makeBasicAuthHeader } from '../store/serverStore'
 
 /**
  * 获取当前 API Base URL
@@ -12,6 +12,18 @@ import { serverStore } from '../store/serverStore'
  */
 export function getApiBaseUrl(): string {
   return serverStore.getActiveBaseUrl()
+}
+
+/**
+ * 获取当前活动服务器的 Authorization header
+ * 如果有认证信息则返回 Basic Auth header，否则返回 undefined
+ */
+export function getAuthHeader(): string | undefined {
+  const auth = serverStore.getActiveAuth()
+  if (auth) {
+    return makeBasicAuthHeader(auth)
+  }
+  return undefined
 }
 
 /** @deprecated 使用 getApiBaseUrl() 代替 */
@@ -67,11 +79,18 @@ export async function request<T>(
 ): Promise<T> {
   const { method = 'GET', body, headers = {} } = options
   
+  // 自动添加认证 header
+  const authHeader = getAuthHeader()
+  const requestHeaders: Record<string, string> = {
+    ...headers,
+  }
+  if (authHeader) {
+    requestHeaders['Authorization'] = authHeader
+  }
+  
   const init: RequestInit = {
     method,
-    headers: {
-      ...headers,
-    },
+    headers: requestHeaders,
   }
   
   if (body !== undefined) {

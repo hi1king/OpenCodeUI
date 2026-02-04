@@ -316,22 +316,21 @@ export const Terminal = memo(function Terminal({
 
   // 主题变化时更新
   useEffect(() => {
-    const handleThemeChange = () => {
-      if (terminalRef.current) {
-        terminalRef.current.options.theme = getTerminalTheme(isDarkMode())
-      }
-    }
-
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.attributeName === 'data-mode') {
-          handleThemeChange()
+          if (terminalRef.current) {
+            terminalRef.current.options.theme = getTerminalTheme(isDarkMode())
+          }
           break
         }
       }
     })
 
-    observer.observe(document.documentElement, { attributes: true })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-mode']
+    })
 
     return () => observer.disconnect()
   }, [])

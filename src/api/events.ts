@@ -2,7 +2,7 @@
 // Global Event Subscription (SSE) - Singleton Pattern
 // ============================================
 
-import { getApiBaseUrl } from './http'
+import { getApiBaseUrl, getAuthHeader } from './http'
 import type {
   ApiMessageWithParts,
   ApiPart,
@@ -109,7 +109,15 @@ function connectSingleton() {
     console.log('[SSE] Connecting singleton...')
   }
 
+  // 构建请求头，如果有认证信息则添加
+  const headers: Record<string, string> = {}
+  const authHeader = getAuthHeader()
+  if (authHeader) {
+    headers['Authorization'] = authHeader
+  }
+  
   fetch(`${getApiBaseUrl()}/global/event`, {
+    headers,
     signal: singletonController.signal,
   })
     .then(async (response) => {
