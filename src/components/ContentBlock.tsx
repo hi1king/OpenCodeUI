@@ -64,7 +64,7 @@ export const ContentBlock = memo(function ContentBlock({
   language,
   variant = 'default',
   defaultCollapsed = false,
-  maxHeight = 300,
+  maxHeight = 400,
   collapsible = true,
   content,
   diff,
@@ -217,20 +217,22 @@ export const ContentBlock = memo(function ContentBlock({
             </div>
           )}
           
-          {/* Actual content */}
-          {hasContent && !collapsed && (
-            <div ref={contentRef} className="relative group/content overflow-auto custom-scrollbar" style={{ maxHeight }}>
+          {/* Actual content - 始终渲染以支持动画 */}
+          {hasContent && (
+            <div ref={contentRef} className="relative group/content">
               {/* Copy button - 悬浮在内容区右上角 */}
               {content && <CopyButton text={content} position="absolute" groupName="content" />}
               
               {isDiff && resolvedDiff ? (
-                <div style={{ height: maxHeight }}>
-                  <DiffViewer before={resolvedDiff.before} after={resolvedDiff.after} language={lang} viewMode={diffViewMode} />
-                </div>
+                <DiffViewer
+                  before={resolvedDiff.before}
+                  after={resolvedDiff.after}
+                  language={lang}
+                  viewMode={diffViewMode}
+                  maxHeight={maxHeight}
+                />
               ) : content ? (
-                <div style={{ height: maxHeight }}>
-                  <CodePreview code={content} language={lang} />
-                </div>
+                <CodePreview code={content} language={lang} maxHeight={maxHeight} truncateLines={false} />
               ) : stats?.exit !== undefined ? (
                 <div className="px-3 py-2 text-text-500 font-mono">
                   {stats.exit === 0 ? 'Completed successfully' : 'No output'}

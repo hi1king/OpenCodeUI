@@ -509,6 +509,9 @@ function DiffPreview({ hunks, isResizing = false }: DiffPreviewProps) {
 interface CodePreviewProps {
   code: string
   language: string
+  truncateLines?: boolean
+  maxHeight?: number
+  minHeight?: number
   isResizing?: boolean
 }
 
@@ -536,8 +539,21 @@ function truncateHtml(html: string): { html: string; truncated: boolean } {
   return { html: truncated, truncated: true }
 }
 
-export function CodePreview({ code, language, isResizing = false }: CodePreviewProps) {
+export function CodePreview({
+  code,
+  language,
+  truncateLines = true,
+  maxHeight = 400,
+  minHeight = 80,
+  isResizing = false,
+}: CodePreviewProps) {
   const lines = useMemo(() => code.split('\n'), [code])
+  const totalHeight = lines.length * LINE_HEIGHT
+  const containerStyle = useMemo(() => {
+    const naturalHeight = totalHeight + 16
+    const height = Math.max(minHeight, Math.min(naturalHeight, maxHeight))
+    return { height }
+  }, [totalHeight, minHeight, maxHeight])
   
   // text 类型不走高亮，resize 时也禁用以提高性能
   const enableHighlight = language !== 'text' && !isResizing
@@ -549,8 +565,6 @@ export function CodePreview({ code, language, isResizing = false }: CodePreviewP
   
   // 缓存高亮结果
   const highlightedLinesRef = useRef<string[] | null>(null)
-  
-  const totalHeight = lines.length * LINE_HEIGHT
   
   // 解析高亮后的行
   const highlightedLines = useMemo(() => {
@@ -626,22 +640,39 @@ export function CodePreview({ code, language, isResizing = false }: CodePreviewP
       let isTruncated = false
       
       if (isHtml && highlighted) {
-        const { html: truncatedHtml, truncated } = truncateHtml(highlighted)
-        isTruncated = truncated
-        displayContent = (
-          <span 
-            className="whitespace-pre"
-            dangerouslySetInnerHTML={{ __html: truncatedHtml }}
-          />
-        )
+        if (truncateLines) {
+          const { html: truncatedHtml, truncated } = truncateHtml(highlighted)
+          isTruncated = truncated
+          displayContent = (
+            <span 
+              className="whitespace-pre"
+              dangerouslySetInnerHTML={{ __html: truncatedHtml }}
+            />
+          )
+        } else {
+          displayContent = (
+            <span 
+              className="whitespace-pre"
+              dangerouslySetInnerHTML={{ __html: highlighted }}
+            />
+          )
+        }
       } else {
-        const { text, truncated } = truncateLine(highlighted || rawLine)
-        isTruncated = truncated
-        displayContent = (
-          <span className="text-text-200 whitespace-pre">
-            {text}
-          </span>
-        )
+        if (truncateLines) {
+          const { text, truncated } = truncateLine(highlighted || rawLine)
+          isTruncated = truncated
+          displayContent = (
+            <span className="text-text-200 whitespace-pre">
+              {text}
+            </span>
+          )
+        } else {
+          displayContent = (
+            <span className="text-text-200 whitespace-pre">
+              {highlighted || rawLine}
+            </span>
+          )
+        }
       }
       
       result.push(
@@ -668,9 +699,9 @@ export function CodePreview({ code, language, isResizing = false }: CodePreviewP
   return (
     <div 
       ref={containerRef}
-      className="h-full overflow-auto panel-scrollbar"
+      className="overflow-auto panel-scrollbar"
       onScroll={handleScroll}
-      style={{ contain: 'strict' }}
+      style={{ contain: 'strict', ...containerStyle }}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div 

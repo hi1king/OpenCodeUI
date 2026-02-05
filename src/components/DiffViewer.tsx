@@ -33,6 +33,8 @@ export interface DiffViewerProps {
   after: string
   language?: string
   viewMode?: ViewMode
+  maxHeight?: number
+  minHeight?: number
   isResizing?: boolean
 }
 
@@ -81,6 +83,8 @@ export const DiffViewer = memo(function DiffViewer({
   after,
   language = 'text',
   viewMode = 'split',
+  maxHeight = 400,
+  minHeight = 80,
   isResizing = false,
 }: DiffViewerProps) {
   // 检测大文件
@@ -88,9 +92,28 @@ export const DiffViewer = memo(function DiffViewer({
   const isLargeFile = totalLines > LARGE_FILE_LINES || before.length + after.length > LARGE_FILE_CHARS
 
   if (viewMode === 'split') {
-    return <SplitDiffView before={before} after={after} language={language} isResizing={isResizing} isLargeFile={isLargeFile} />
+    return (
+      <SplitDiffView
+        before={before}
+        after={after}
+        language={language}
+        isResizing={isResizing}
+        isLargeFile={isLargeFile}
+        maxHeight={maxHeight}
+        minHeight={minHeight}
+      />
+    )
   }
-  return <UnifiedDiffView before={before} after={after} language={language} isResizing={isResizing} />
+  return (
+    <UnifiedDiffView
+      before={before}
+      after={after}
+      language={language}
+      isResizing={isResizing}
+      maxHeight={maxHeight}
+      minHeight={minHeight}
+    />
+  )
 })
 
 // ============================================
@@ -103,12 +126,16 @@ const SplitDiffView = memo(function SplitDiffView({
   language,
   isResizing,
   isLargeFile,
+  maxHeight,
+  minHeight,
 }: { 
   before: string
   after: string
   language: string
   isResizing: boolean
   isLargeFile: boolean  // 仅用于跳过word-level diff
+  maxHeight: number
+  minHeight: number
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const leftPanelRef = useRef<HTMLDivElement>(null)
@@ -138,6 +165,11 @@ const SplitDiffView = memo(function SplitDiffView({
   }, [before, after, isResizing, skipWordDiff])
   
   const totalHeight = pairedLines.length * LINE_HEIGHT
+  const containerStyle = useMemo(() => {
+    const naturalHeight = totalHeight + 16
+    const height = Math.max(minHeight, Math.min(naturalHeight, maxHeight))
+    return { height }
+  }, [totalHeight, minHeight, maxHeight])
   
   // 可见范围
   const { startIndex, endIndex, offsetY } = useMemo(() => {
@@ -245,7 +277,7 @@ const SplitDiffView = memo(function SplitDiffView({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col" style={containerStyle}>
       {/* 主内容区域 */}
       <div 
         ref={containerRef}
@@ -317,11 +349,15 @@ const UnifiedDiffView = memo(function UnifiedDiffView({
   after, 
   language,
   isResizing,
+  maxHeight,
+  minHeight,
 }: { 
   before: string
   after: string
   language: string
   isResizing: boolean
+  maxHeight: number
+  minHeight: number
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -342,6 +378,11 @@ const UnifiedDiffView = memo(function UnifiedDiffView({
   }, [before, after, isResizing])
   
   const totalHeight = lines.length * LINE_HEIGHT
+  const containerStyle = useMemo(() => {
+    const naturalHeight = totalHeight + 16
+    const height = Math.max(minHeight, Math.min(naturalHeight, maxHeight))
+    return { height }
+  }, [totalHeight, minHeight, maxHeight])
   
   const { startIndex, endIndex, offsetY } = useMemo(() => {
     const start = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT) - OVERSCAN)
@@ -401,8 +442,9 @@ const UnifiedDiffView = memo(function UnifiedDiffView({
   return (
     <div 
       ref={containerRef}
-      className="h-full overflow-auto panel-scrollbar font-mono"
+      className="overflow-auto panel-scrollbar font-mono"
       onScroll={handleScroll}
+      style={containerStyle}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, transform: `translateY(${offsetY}px)` }}>
