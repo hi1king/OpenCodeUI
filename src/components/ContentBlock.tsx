@@ -9,7 +9,7 @@
 
 import { memo, useState, useMemo, useEffect, useRef } from 'react'
 import { diffLines } from 'diff'
-import { ChevronDownIcon, MaximizeIcon } from './Icons'
+import { ChevronDownIcon, ChevronRightIcon, MaximizeIcon } from './Icons'
 import { CopyButton } from './ui'
 import { DiffViewer, extractContentFromUnifiedDiff, type ViewMode } from './DiffViewer'
 import { CodePreview } from './FileExplorer'
@@ -155,10 +155,10 @@ export const ContentBlock = memo(function ContentBlock({
         {/* Left: chevron + label + filename */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {canCollapse && (
-            <span className={`transition-transform duration-200 shrink-0 ${collapsed ? '' : 'rotate-180'} ${
+            <span className={`shrink-0 ${
               isError ? 'text-danger-100/60' : 'text-text-500'
             }`}>
-              <ChevronDownIcon size={12} />
+              {collapsed ? <ChevronRightIcon size={12} /> : <ChevronDownIcon size={12} />}
             </span>
           )}
           <span className={`font-medium font-mono leading-none ${
