@@ -11,9 +11,11 @@ import {
   getSelectableAgents, 
   getPendingPermissions, getPendingQuestions, 
   executeCommand,
+  updateSession,
   type ApiSession,
   type ApiAgent, type Attachment, type ModelInfo,
 } from '../api'
+import { getMessageText } from '../types/message'
 import { createErrorHandler } from '../utils'
 import { 
   PERMISSION_POLL_INTERVAL_MS,
@@ -51,7 +53,7 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
   const { resetPermissions } = usePermissions()
   const { sessionId: routeSessionId, navigateToSession, navigateHome } = useRouter()
   const { currentDirectory, sidebarExpanded, setSidebarExpanded } = useDirectory()
-  const { createSession } = useSessionContext()
+  const { createSession, sessions } = useSessionContext()
   
   // Session family for permission polling
   const sessionFamily = useSessionFamily(routeSessionId)
@@ -316,6 +318,68 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
     handleNewChat()
   }, [navigateHome, handleNewChat])
 
+  // Archive current session
+  const handleArchiveSession = useCallback(async () => {
+    if (!routeSessionId) return
+    try {
+      await updateSession(routeSessionId, { time: { archived: Date.now() } }, effectiveDirectory)
+      navigateHome()
+      handleNewChat()
+    } catch (error) {
+      handleError('archive session', error)
+    }
+  }, [routeSessionId, effectiveDirectory, navigateHome, handleNewChat])
+
+  // Navigate to previous session
+  const handlePreviousSession = useCallback(() => {
+    if (!sessions.length) return
+    const currentIndex = sessions.findIndex(s => s.id === routeSessionId)
+    if (currentIndex > 0) {
+      navigateToSession(sessions[currentIndex - 1].id)
+    } else if (currentIndex === -1 && sessions.length > 0) {
+      // Not in any session, go to first
+      navigateToSession(sessions[0].id)
+    }
+  }, [sessions, routeSessionId, navigateToSession])
+
+  // Navigate to next session
+  const handleNextSession = useCallback(() => {
+    if (!sessions.length) return
+    const currentIndex = sessions.findIndex(s => s.id === routeSessionId)
+    if (currentIndex >= 0 && currentIndex < sessions.length - 1) {
+      navigateToSession(sessions[currentIndex + 1].id)
+    }
+  }, [sessions, routeSessionId, navigateToSession])
+
+  // Toggle agent (cycle through available agents)
+  const handleToggleAgent = useCallback(() => {
+    if (!agents.length) return
+    const currentIndex = agents.findIndex(a => a.name === selectedAgent)
+    const nextIndex = (currentIndex + 1) % agents.length
+    setSelectedAgent(agents[nextIndex].name)
+  }, [agents, selectedAgent, setSelectedAgent])
+
+  // Copy last AI response to clipboard
+  const handleCopyLastResponse = useCallback(async () => {
+    const lastAssistant = [...messages].reverse().find(m => m.info.role === 'assistant')
+    if (!lastAssistant) return
+    
+    const text = getMessageText(lastAssistant)
+    if (text) {
+      try {
+        await navigator.clipboard.writeText(text)
+      } catch {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
+    }
+  }, [messages])
+
   return {
     // State
     messages,
@@ -361,5 +425,10 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
     handleSelectSession,
     handleNewSession,
     handleVisibleMessageIdsChange,
+    handleArchiveSession,
+    handlePreviousSession,
+    handleNextSession,
+    handleToggleAgent,
+    handleCopyLastResponse,
   }
 }

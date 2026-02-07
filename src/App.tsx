@@ -1,20 +1,33 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Header, InputBox, PermissionDialog, QuestionDialog, Sidebar, ChatArea, type ChatAreaHandle } from './features/chat'
+import { type ModelSelectorHandle } from './features/chat/ModelSelector'
 import { SettingsDialog } from './features/settings/SettingsDialog'
+import { CommandPalette, type CommandItem } from './components/CommandPalette'
 import { RightPanel } from './components/RightPanel'
 import { BottomPanel } from './components/BottomPanel'
 import { useTheme, useModels, useModelSelection, useChatSession, useGlobalKeybindings } from './hooks'
 import type { KeybindingHandlers } from './hooks/useKeybindings'
+import { keybindingStore } from './store/keybindingStore'
 import { layoutStore } from './store/layoutStore'
 import { STORAGE_KEY_WIDE_MODE } from './constants'
 import { restoreModelSelection } from './utils/sessionHelpers'
 import type { Attachment } from './api'
+import { createPtySession } from './api/pty'
+import type { TerminalTab } from './store/layoutStore'
 
 function App() {
   // ============================================
   // Refs
   // ============================================
   const chatAreaRef = useRef<ChatAreaHandle>(null)
+  const modelSelectorRef = useRef<ModelSelectorHandle>(null)
+  const lastEscTimeRef = useRef(0)
+  const escHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ============================================
+  // Cancel Hint (double-Esc to abort)
+  // ============================================
+  const [showCancelHint, setShowCancelHint] = useState(false)
 
   // ============================================
   // Theme
@@ -53,8 +66,21 @@ function App() {
   // Settings Dialog
   // ============================================
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
-  const openSettings = useCallback(() => setSettingsDialogOpen(true), [])
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'keybindings'>('general')
+  const openSettings = useCallback(() => { setSettingsInitialTab('general'); setSettingsDialogOpen(true) }, [])
   const closeSettings = useCallback(() => setSettingsDialogOpen(false), [])
+
+  // ============================================
+  // Project Dialog (triggered externally via keybinding)
+  // ============================================
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const openProject = useCallback(() => setProjectDialogOpen(true), [])
+  const closeProjectDialog = useCallback(() => setProjectDialogOpen(false), [])
+
+  // ============================================
+  // Command Palette
+  // ============================================
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
   // ============================================
   // Chat Session
@@ -102,6 +128,11 @@ function App() {
     handleSelectSession,
     handleNewSession,
     handleVisibleMessageIdsChange,
+    handleArchiveSession,
+    handlePreviousSession,
+    handleNextSession,
+    handleToggleAgent,
+    handleCopyLastResponse,
   } = useChatSession({ chatAreaRef, currentModel })
 
 
@@ -135,37 +166,147 @@ function App() {
   // ============================================
   // Global Keybindings
   // ============================================
+  
+  // Create new terminal handler
+  const handleNewTerminal = useCallback(async () => {
+    try {
+      const pty = await createPtySession({ cwd: effectiveDirectory }, effectiveDirectory)
+      const tab: TerminalTab = {
+        id: pty.id,
+        title: pty.title || 'Terminal',
+        status: 'connecting',
+      }
+      layoutStore.addTerminalTab(tab, true)
+    } catch (error) {
+      console.error('[App] Failed to create terminal:', error)
+    }
+  }, [effectiveDirectory])
+  
   const keybindingHandlers = useMemo<KeybindingHandlers>(() => ({
     // General
     openSettings,
+    openProject,
+    commandPalette: () => setCommandPaletteOpen(true),
     toggleSidebar: () => setSidebarExpanded(!sidebarExpanded),
     toggleRightPanel: () => layoutStore.toggleRightPanel(),
     focusInput: () => {
-      // 聚焦到输入框 - InputBox 内部需要 expose 方法或使用 DOM
       const input = document.querySelector<HTMLTextAreaElement>('[data-input-box] textarea')
       input?.focus()
     },
     
     // Session
     newSession: handleNewSession,
+    archiveSession: handleArchiveSession,
+    previousSession: handlePreviousSession,
+    nextSession: handleNextSession,
     
     // Terminal
     toggleTerminal: () => layoutStore.toggleBottomPanel(),
+    newTerminal: handleNewTerminal,
+    
+    // Model
+    selectModel: () => modelSelectorRef.current?.openMenu(),
+    toggleAgent: handleToggleAgent,
     
     // Message
     cancelMessage: () => {
-      if (isStreaming) {
+      if (!isStreaming) return
+      
+      const now = Date.now()
+      const elapsed = now - lastEscTimeRef.current
+      
+      if (elapsed < 600) {
+        // 双击确认 → 真正取消
+        lastEscTimeRef.current = 0
+        setShowCancelHint(false)
+        if (escHintTimerRef.current) clearTimeout(escHintTimerRef.current)
         handleAbort()
+      } else {
+        // 第一次按 → 显示提示
+        lastEscTimeRef.current = now
+        setShowCancelHint(true)
+        if (escHintTimerRef.current) clearTimeout(escHintTimerRef.current)
+        escHintTimerRef.current = setTimeout(() => {
+          setShowCancelHint(false)
+          lastEscTimeRef.current = 0
+        }, 1500)
       }
     },
-  }), [openSettings, sidebarExpanded, setSidebarExpanded, handleNewSession, isStreaming, handleAbort])
+    copyLastResponse: handleCopyLastResponse,
+  }), [
+    openSettings,
+    openProject,
+    sidebarExpanded, 
+    setSidebarExpanded, 
+    handleNewSession,
+    handleArchiveSession,
+    handlePreviousSession,
+    handleNextSession,
+    handleNewTerminal,
+    handleToggleAgent,
+    isStreaming, 
+    handleAbort,
+    handleCopyLastResponse,
+  ])
 
   useGlobalKeybindings(keybindingHandlers)
+
+  // ============================================
+  // Command Palette - Commands List
+  // ============================================
+  const commands = useMemo<CommandItem[]>(() => {
+    const getShortcut = (action: string) => keybindingStore.getKey(action as import('./store/keybindingStore').KeybindingAction)
+
+    return [
+      // General
+      { id: 'openSettings', label: 'Open Settings', description: 'Open settings dialog', category: 'General', shortcut: getShortcut('openSettings'), action: openSettings },
+      { id: 'openProject', label: 'Open Project', description: 'Open project selector', category: 'General', shortcut: getShortcut('openProject'), action: openProject },
+      { id: 'openSettingsShortcuts', label: 'Open Shortcuts Settings', description: 'Open settings to shortcuts tab', category: 'General', action: () => { setSettingsInitialTab('keybindings'); setSettingsDialogOpen(true) } },
+      { id: 'toggleSidebar', label: 'Toggle Sidebar', description: 'Show or hide sidebar', category: 'General', shortcut: getShortcut('toggleSidebar'), action: () => setSidebarExpanded(!sidebarExpanded) },
+      { id: 'toggleRightPanel', label: 'Toggle Right Panel', description: 'Show or hide right panel', category: 'General', shortcut: getShortcut('toggleRightPanel'), action: () => layoutStore.toggleRightPanel() },
+      { id: 'focusInput', label: 'Focus Input', description: 'Focus message input', category: 'General', shortcut: getShortcut('focusInput'), action: () => { const input = document.querySelector<HTMLTextAreaElement>('[data-input-box] textarea'); input?.focus() } },
+
+      // Session
+      { id: 'newSession', label: 'New Session', description: 'Create new chat session', category: 'Session', shortcut: getShortcut('newSession'), action: handleNewSession },
+      { id: 'archiveSession', label: 'Archive Session', description: 'Archive current session', category: 'Session', shortcut: getShortcut('archiveSession'), action: handleArchiveSession },
+      { id: 'previousSession', label: 'Previous Session', description: 'Switch to previous session', category: 'Session', shortcut: getShortcut('previousSession'), action: handlePreviousSession },
+      { id: 'nextSession', label: 'Next Session', description: 'Switch to next session', category: 'Session', shortcut: getShortcut('nextSession'), action: handleNextSession },
+
+      // Terminal
+      { id: 'toggleTerminal', label: 'Toggle Terminal', description: 'Show or hide terminal panel', category: 'Terminal', shortcut: getShortcut('toggleTerminal'), action: () => layoutStore.toggleBottomPanel() },
+      { id: 'newTerminal', label: 'New Terminal', description: 'Open new terminal tab', category: 'Terminal', shortcut: getShortcut('newTerminal'), action: handleNewTerminal },
+
+      // Model
+      { id: 'selectModel', label: 'Select Model', description: 'Open model selector', category: 'Model', shortcut: getShortcut('selectModel'), action: () => modelSelectorRef.current?.openMenu() },
+      { id: 'toggleAgent', label: 'Toggle Agent', description: 'Switch agent mode', category: 'Model', shortcut: getShortcut('toggleAgent'), action: handleToggleAgent },
+
+      // Message
+      { id: 'copyLastResponse', label: 'Copy Last Response', description: 'Copy last AI response to clipboard', category: 'Message', shortcut: getShortcut('copyLastResponse'), action: handleCopyLastResponse },
+      { id: 'cancelMessage', label: 'Cancel Message', description: 'Cancel current response', category: 'Message', shortcut: getShortcut('cancelMessage'), action: () => { if (isStreaming) handleAbort() }, when: () => isStreaming },
+    ]
+  }, [
+    openSettings, openProject, sidebarExpanded, setSidebarExpanded,
+    handleNewSession, handleArchiveSession, handlePreviousSession, handleNextSession,
+    handleNewTerminal, handleToggleAgent, handleCopyLastResponse,
+    isStreaming, handleAbort,
+  ])
 
   // ============================================
   // Render
   // ============================================
   const isIdle = !isStreaming
+
+  // streaming 结束时清理 cancel hint
+  useEffect(() => {
+    if (!isStreaming) {
+      setShowCancelHint(false)
+      lastEscTimeRef.current = 0
+      if (escHintTimerRef.current) {
+        clearTimeout(escHintTimerRef.current)
+        escHintTimerRef.current = null
+      }
+    }
+  }, [isStreaming])
 
   const revertedMessage = revertedContent ? {
     text: revertedContent.text,
@@ -188,6 +329,8 @@ function App() {
         onThemeChange={setThemeWithAnimation}
         isWideMode={isWideMode}
         onToggleWideMode={toggleWideMode}
+        projectDialogOpen={projectDialogOpen}
+        onProjectDialogClose={closeProjectDialog}
       />
 
       {/* Main Content Area: Chat Column + Right Panel */}
@@ -205,6 +348,7 @@ function App() {
                   selectedModelKey={selectedModelKey}
                   onModelChange={handleModelChange}
                   onOpenSidebar={() => setSidebarExpanded(true)}
+                  modelSelectorRef={modelSelectorRef}
                 />
               </div>
             </div>
@@ -228,6 +372,14 @@ function App() {
 
             {/* Floating Input Box */}
             <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
+              {/* Double-Esc cancel hint */}
+              {showCancelHint && (
+                <div className="flex justify-center mb-2 pointer-events-none">
+                  <div className="px-3 py-1.5 bg-bg-000/95 border border-border-200 rounded-lg shadow-lg text-xs text-text-300 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    Press <kbd className="mx-0.5 px-1.5 py-0.5 bg-bg-200 border border-border-200 rounded text-[11px] font-mono font-medium text-text-200">Esc</kbd> again to stop
+                  </div>
+                </div>
+              )}
               <InputBox 
                 onSend={handleSend} 
                 onAbort={handleAbort}
@@ -293,6 +445,14 @@ function App() {
         onThemeChange={setThemeWithAnimation}
         isWideMode={isWideMode}
         onToggleWideMode={toggleWideMode}
+        initialTab={settingsInitialTab}
+      />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        commands={commands}
       />
     </div>
   )

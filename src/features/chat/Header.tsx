@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { PanelRightIcon, PanelBottomIcon, ChevronDownIcon, SidebarIcon } from '../../components/Icons'
 import { IconButton } from '../../components/ui'
-import { ModelSelector } from './ModelSelector'
+import { ModelSelector, type ModelSelectorHandle } from './ModelSelector'
 import { ShareDialog } from './ShareDialog'
 import { useMessageStore } from '../../store'
 import { useLayoutStore, layoutStore } from '../../store/layoutStore'
@@ -16,6 +16,7 @@ interface HeaderProps {
   selectedModelKey: string | null
   onModelChange: (modelKey: string, model: ModelInfo) => void
   onOpenSidebar?: () => void
+  modelSelectorRef?: React.RefObject<ModelSelectorHandle | null>
 }
 
 export function Header({
@@ -24,6 +25,7 @@ export function Header({
   selectedModelKey,
   onModelChange,
   onOpenSidebar,
+  modelSelectorRef,
 }: HeaderProps) {
   const { sessionId } = useMessageStore()
   const { rightPanelOpen, bottomPanelOpen } = useLayoutStore()
@@ -91,6 +93,7 @@ export function Header({
           </IconButton>
         )}
         <ModelSelector
+          ref={modelSelectorRef}
           models={models}
           selectedModelKey={selectedModelKey}
           onSelect={onModelChange}

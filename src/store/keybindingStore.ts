@@ -58,42 +58,122 @@ const STORAGE_KEY = 'opencode-keybindings'
 
 /**
  * 默认快捷键配置
+ * 
+ * 注意：浏览器保留了某些快捷键无法被覆盖，如：
+ * - Ctrl+L (地址栏), Ctrl+O (打开文件), Ctrl+N (新窗口)
+ * - Ctrl+W (关闭标签), Ctrl+T (新标签), Ctrl+Tab (切换标签)
+ * 
+ * 因此我们使用 Alt 组合键或 Ctrl+Shift 组合键来避免冲突
  */
 const DEFAULT_KEYBINDINGS: KeybindingConfig[] = [
-  // General
-  { action: 'openSettings', label: 'Open Settings', description: 'Open settings dialog', defaultKey: 'Ctrl+,', currentKey: 'Ctrl+,', category: 'general' },
-  { action: 'openProject', label: 'Open Project', description: 'Open project selector', defaultKey: 'Ctrl+O', currentKey: 'Ctrl+O', category: 'general' },
+  // General - 使用 Alt 组合避免浏览器冲突
+  { action: 'openSettings', label: 'Open Settings', description: 'Open settings dialog', defaultKey: 'Alt+,', currentKey: 'Alt+,', category: 'general' },
+  { action: 'openProject', label: 'Open Project', description: 'Open project selector', defaultKey: 'Alt+O', currentKey: 'Alt+O', category: 'general' },
   { action: 'commandPalette', label: 'Command Palette', description: 'Open command palette', defaultKey: 'Ctrl+Shift+P', currentKey: 'Ctrl+Shift+P', category: 'general' },
-  { action: 'toggleSidebar', label: 'Toggle Sidebar', description: 'Show/hide sidebar', defaultKey: 'Ctrl+B', currentKey: 'Ctrl+B', category: 'general' },
-  { action: 'toggleRightPanel', label: 'Toggle Right Panel', description: 'Show/hide right panel', defaultKey: 'Ctrl+\\', currentKey: 'Ctrl+\\', category: 'general' },
-  { action: 'focusInput', label: 'Focus Input', description: 'Focus message input', defaultKey: 'Ctrl+L', currentKey: 'Ctrl+L', category: 'general' },
+  { action: 'toggleSidebar', label: 'Toggle Sidebar', description: 'Show/hide sidebar', defaultKey: 'Alt+B', currentKey: 'Alt+B', category: 'general' },
+  { action: 'toggleRightPanel', label: 'Toggle Right Panel', description: 'Show/hide right panel', defaultKey: 'Alt+\\', currentKey: 'Alt+\\', category: 'general' },
+  { action: 'focusInput', label: 'Focus Input', description: 'Focus message input', defaultKey: 'Alt+I', currentKey: 'Alt+I', category: 'general' },
   
   // Session
-  { action: 'newSession', label: 'New Session', description: 'Create new chat session', defaultKey: 'Ctrl+Shift+N', currentKey: 'Ctrl+Shift+N', category: 'session' },
-  { action: 'archiveSession', label: 'Archive Session', description: 'Archive current session', defaultKey: 'Ctrl+Shift+Backspace', currentKey: 'Ctrl+Shift+Backspace', category: 'session' },
+  { action: 'newSession', label: 'New Session', description: 'Create new chat session', defaultKey: 'Alt+N', currentKey: 'Alt+N', category: 'session' },
+  { action: 'archiveSession', label: 'Archive Session', description: 'Archive current session', defaultKey: 'Alt+Backspace', currentKey: 'Alt+Backspace', category: 'session' },
   { action: 'previousSession', label: 'Previous Session', description: 'Switch to previous session', defaultKey: 'Alt+ArrowUp', currentKey: 'Alt+ArrowUp', category: 'session' },
   { action: 'nextSession', label: 'Next Session', description: 'Switch to next session', defaultKey: 'Alt+ArrowDown', currentKey: 'Alt+ArrowDown', category: 'session' },
   
   // Terminal
-  { action: 'toggleTerminal', label: 'Toggle Terminal', description: 'Show/hide terminal panel', defaultKey: 'Ctrl+`', currentKey: 'Ctrl+`', category: 'terminal' },
-  { action: 'newTerminal', label: 'New Terminal', description: 'Open new terminal tab', defaultKey: 'Ctrl+Alt+T', currentKey: 'Ctrl+Alt+T', category: 'terminal' },
+  { action: 'toggleTerminal', label: 'Toggle Terminal', description: 'Show/hide terminal panel', defaultKey: 'Alt+`', currentKey: 'Alt+`', category: 'terminal' },
+  { action: 'newTerminal', label: 'New Terminal', description: 'Open new terminal tab', defaultKey: 'Alt+T', currentKey: 'Alt+T', category: 'terminal' },
   
   // Model
-  { action: 'selectModel', label: 'Select Model', description: 'Open model selector', defaultKey: "Ctrl+'", currentKey: "Ctrl+'", category: 'model' },
-  { action: 'toggleAgent', label: 'Toggle Agent', description: 'Switch agent mode', defaultKey: 'Ctrl+.', currentKey: 'Ctrl+.', category: 'model' },
+  { action: 'selectModel', label: 'Select Model', description: 'Open model selector', defaultKey: 'Alt+M', currentKey: 'Alt+M', category: 'model' },
+  { action: 'toggleAgent', label: 'Toggle Agent', description: 'Switch agent mode', defaultKey: 'Alt+.', currentKey: 'Alt+.', category: 'model' },
   
   // Message
   { action: 'sendMessage', label: 'Send Message', description: 'Send current message', defaultKey: 'Enter', currentKey: 'Enter', category: 'message' },
   { action: 'cancelMessage', label: 'Cancel Message', description: 'Cancel current response', defaultKey: 'Escape', currentKey: 'Escape', category: 'message' },
-  { action: 'copyLastResponse', label: 'Copy Response', description: 'Copy last AI response', defaultKey: 'Ctrl+Shift+C', currentKey: 'Ctrl+Shift+C', category: 'message' },
+  { action: 'copyLastResponse', label: 'Copy Response', description: 'Copy last AI response', defaultKey: 'Alt+C', currentKey: 'Alt+C', category: 'message' },
 ]
+
+/**
+ * 规范化按键名称 - 处理各种别名和大小写
+ */
+function normalizeKeyName(key: string): string {
+  const keyLower = key.toLowerCase()
+  
+  // 特殊键别名映射
+  const aliases: Record<string, string> = {
+    'esc': 'escape',
+    'return': 'enter',
+    'space': ' ',
+    'spacebar': ' ',
+    'up': 'arrowup',
+    'down': 'arrowdown',
+    'left': 'arrowleft',
+    'right': 'arrowright',
+    'del': 'delete',
+    'ins': 'insert',
+    'pgup': 'pageup',
+    'pgdn': 'pagedown',
+    'pgdown': 'pagedown',
+    'backquote': '`',
+    'backtick': '`',
+    'comma': ',',
+    'period': '.',
+    'dot': '.',
+    'slash': '/',
+    'backslash': '\\',
+    'minus': '-',
+    'dash': '-',
+    'equal': '=',
+    'equals': '=',
+    'plus': '+',
+    'semicolon': ';',
+    'quote': "'",
+    'singlequote': "'",
+    'doublequote': '"',
+    'bracketleft': '[',
+    'bracketright': ']',
+  }
+  
+  return aliases[keyLower] || keyLower
+}
 
 /**
  * 解析快捷键字符串
  * 格式: "Ctrl+Shift+K" -> { key: 'k', ctrl: true, shift: true, alt: false, meta: false }
+ * 支持多种格式: "Ctrl+K", "ctrl+k", "Control+K" 等
  */
 export function parseKeybinding(keyStr: string): ParsedKeybinding {
-  const parts = keyStr.split('+')
+  // 处理 "+" 作为主键的特殊情况 (e.g., "Ctrl++")
+  const parts: string[] = []
+  let remaining = keyStr
+  
+  // 匹配修饰键
+  const modifiers = ['ctrl', 'control', 'alt', 'shift', 'meta', 'cmd', 'command', 'win']
+  
+  while (remaining.includes('+')) {
+    const plusIndex = remaining.indexOf('+')
+    const part = remaining.substring(0, plusIndex)
+    
+    if (part.length > 0) {
+      parts.push(part)
+      remaining = remaining.substring(plusIndex + 1)
+    } else {
+      // 空字符串意味着 "+" 在开头或连续 "++"
+      // 检查是否 "+" 是主键
+      if (remaining.length === 1 || !modifiers.includes(remaining.substring(1).split('+')[0].toLowerCase())) {
+        parts.push('+')
+        remaining = remaining.substring(1)
+        break
+      }
+      remaining = remaining.substring(1)
+    }
+  }
+  
+  if (remaining.length > 0) {
+    parts.push(remaining)
+  }
+  
   const result: ParsedKeybinding = {
     key: '',
     ctrl: false,
@@ -106,15 +186,15 @@ export function parseKeybinding(keyStr: string): ParsedKeybinding {
     const lower = part.toLowerCase()
     if (lower === 'ctrl' || lower === 'control') {
       result.ctrl = true
-    } else if (lower === 'alt') {
+    } else if (lower === 'alt' || lower === 'option') {
       result.alt = true
     } else if (lower === 'shift') {
       result.shift = true
-    } else if (lower === 'meta' || lower === 'cmd' || lower === 'command' || lower === 'win') {
+    } else if (lower === 'meta' || lower === 'cmd' || lower === 'command' || lower === 'win' || lower === 'super') {
       result.meta = true
     } else {
-      // 主键
-      result.key = lower
+      // 主键 - 规范化
+      result.key = normalizeKeyName(part)
     }
   }
   
@@ -122,28 +202,110 @@ export function parseKeybinding(keyStr: string): ParsedKeybinding {
 }
 
 /**
- * 格式化快捷键为显示字符串
+ * 将 ParsedKeybinding 规范化为标准字符串格式 (用于比较)
+ * 顺序: Ctrl+Alt+Shift+Meta+Key
+ */
+export function normalizeKeybindingString(keyStr: string): string {
+  const parsed = parseKeybinding(keyStr)
+  return keybindingToNormalizedString(parsed)
+}
+
+/**
+ * 将 ParsedKeybinding 转换为规范化字符串
+ */
+function keybindingToNormalizedString(parsed: ParsedKeybinding): string {
+  const parts: string[] = []
+  if (parsed.ctrl) parts.push('ctrl')
+  if (parsed.alt) parts.push('alt')
+  if (parsed.shift) parts.push('shift')
+  if (parsed.meta) parts.push('meta')
+  parts.push(parsed.key)
+  return parts.join('+')
+}
+
+/**
+ * 格式化快捷键为显示字符串 (用户友好的格式)
  */
 export function formatKeybinding(parsed: ParsedKeybinding): string {
   const parts: string[] = []
   if (parsed.ctrl) parts.push('Ctrl')
   if (parsed.alt) parts.push('Alt')
   if (parsed.shift) parts.push('Shift')
-  if (parsed.meta) parts.push('Meta')
+  if (parsed.meta) parts.push('⌘')
   
-  // 格式化主键
+  // 格式化主键为用户友好的显示
   let keyDisplay = parsed.key
-  if (keyDisplay === 'arrowup') keyDisplay = '↑'
-  else if (keyDisplay === 'arrowdown') keyDisplay = '↓'
-  else if (keyDisplay === 'arrowleft') keyDisplay = '←'
-  else if (keyDisplay === 'arrowright') keyDisplay = '→'
-  else if (keyDisplay === 'backspace') keyDisplay = 'Backspace'
-  else if (keyDisplay === 'escape') keyDisplay = 'Esc'
-  else if (keyDisplay === 'enter') keyDisplay = 'Enter'
-  else if (keyDisplay === ' ') keyDisplay = 'Space'
-  else if (keyDisplay.length === 1) keyDisplay = keyDisplay.toUpperCase()
+  const keyDisplayMap: Record<string, string> = {
+    'arrowup': '↑',
+    'arrowdown': '↓',
+    'arrowleft': '←',
+    'arrowright': '→',
+    'backspace': '⌫',
+    'delete': 'Del',
+    'escape': 'Esc',
+    'enter': '↵',
+    ' ': 'Space',
+    'tab': 'Tab',
+    'capslock': 'Caps',
+    'pageup': 'PgUp',
+    'pagedown': 'PgDn',
+    'home': 'Home',
+    'end': 'End',
+    'insert': 'Ins',
+    '`': '`',
+    '-': '-',
+    '=': '=',
+    '[': '[',
+    ']': ']',
+    '\\': '\\',
+    ';': ';',
+    "'": "'",
+    ',': ',',
+    '.': '.',
+    '/': '/',
+  }
+  
+  if (keyDisplayMap[keyDisplay]) {
+    keyDisplay = keyDisplayMap[keyDisplay]
+  } else if (keyDisplay.length === 1) {
+    keyDisplay = keyDisplay.toUpperCase()
+  } else if (keyDisplay.startsWith('f') && /^f\d{1,2}$/.test(keyDisplay)) {
+    // F1-F12
+    keyDisplay = keyDisplay.toUpperCase()
+  }
   
   parts.push(keyDisplay)
+  return parts.join(' + ')
+}
+
+/**
+ * 格式化快捷键为紧凑字符串 (用于存储)
+ */
+export function formatKeybindingCompact(parsed: ParsedKeybinding): string {
+  const parts: string[] = []
+  if (parsed.ctrl) parts.push('Ctrl')
+  if (parsed.alt) parts.push('Alt')
+  if (parsed.shift) parts.push('Shift')
+  if (parsed.meta) parts.push('Meta')
+  
+  // 主键首字母大写或特殊格式
+  let keyStr = parsed.key
+  if (keyStr === 'arrowup') keyStr = 'ArrowUp'
+  else if (keyStr === 'arrowdown') keyStr = 'ArrowDown'
+  else if (keyStr === 'arrowleft') keyStr = 'ArrowLeft'
+  else if (keyStr === 'arrowright') keyStr = 'ArrowRight'
+  else if (keyStr === 'backspace') keyStr = 'Backspace'
+  else if (keyStr === 'escape') keyStr = 'Escape'
+  else if (keyStr === 'enter') keyStr = 'Enter'
+  else if (keyStr === ' ') keyStr = 'Space'
+  else if (keyStr === 'delete') keyStr = 'Delete'
+  else if (keyStr === 'tab') keyStr = 'Tab'
+  else if (keyStr.length === 1) keyStr = keyStr.toUpperCase()
+  else if (keyStr.startsWith('f') && /^f\d{1,2}$/.test(keyStr)) {
+    keyStr = keyStr.toUpperCase()
+  }
+  
+  parts.push(keyStr)
   return parts.join('+')
 }
 
@@ -151,14 +313,17 @@ export function formatKeybinding(parsed: ParsedKeybinding): string {
  * 从 KeyboardEvent 生成快捷键字符串
  */
 export function keyEventToString(e: KeyboardEvent): string {
+  // 规范化 key 名称
+  const key = normalizeKeyName(e.key)
+  
   const parsed: ParsedKeybinding = {
-    key: e.key.toLowerCase(),
+    key,
     ctrl: e.ctrlKey,
     alt: e.altKey,
     shift: e.shiftKey,
     meta: e.metaKey,
   }
-  return formatKeybinding(parsed)
+  return formatKeybindingCompact(parsed)
 }
 
 /**
@@ -166,14 +331,22 @@ export function keyEventToString(e: KeyboardEvent): string {
  */
 export function matchesKeybinding(e: KeyboardEvent, keyStr: string): boolean {
   const parsed = parseKeybinding(keyStr)
+  const eventKey = normalizeKeyName(e.key)
   
   return (
-    e.key.toLowerCase() === parsed.key &&
+    eventKey === parsed.key &&
     e.ctrlKey === parsed.ctrl &&
     e.altKey === parsed.alt &&
     e.shiftKey === parsed.shift &&
     e.metaKey === parsed.meta
   )
+}
+
+/**
+ * 比较两个快捷键字符串是否相同 (规范化后比较)
+ */
+export function keybindingsEqual(a: string, b: string): boolean {
+  return normalizeKeybindingString(a) === normalizeKeybindingString(b)
 }
 
 /**
@@ -281,20 +454,22 @@ class KeybindingStore {
   }
   
   /**
-   * 根据快捷键查找动作
+   * 检查快捷键是否已被使用 (使用规范化比较)
    */
-  findActionByKey(keyStr: string): KeybindingAction | null {
-    const kb = this.keybindings.find(k => k.currentKey === keyStr)
-    return kb?.action ?? null
+  isKeyUsed(keyStr: string, excludeAction?: KeybindingAction): boolean {
+    const normalizedInput = normalizeKeybindingString(keyStr)
+    return this.keybindings.some(
+      kb => normalizeKeybindingString(kb.currentKey) === normalizedInput && kb.action !== excludeAction
+    )
   }
   
   /**
-   * 检查快捷键是否已被使用
+   * 根据快捷键查找动作 (使用规范化比较)
    */
-  isKeyUsed(keyStr: string, excludeAction?: KeybindingAction): boolean {
-    return this.keybindings.some(
-      kb => kb.currentKey === keyStr && kb.action !== excludeAction
-    )
+  findActionByKey(keyStr: string): KeybindingAction | null {
+    const normalizedInput = normalizeKeybindingString(keyStr)
+    const kb = this.keybindings.find(k => normalizeKeybindingString(k.currentKey) === normalizedInput)
+    return kb?.action ?? null
   }
   
   // ============================================

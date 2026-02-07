@@ -77,6 +77,13 @@ export function useGlobalKeybindings(handlers: KeybindingHandlers, enabled = tru
                       target.tagName === 'TEXTAREA' || 
                       target.isContentEditable
       
+      // 检查是否有模态框/对话框/下拉菜单打开
+      // 如果有，只允许特定的快捷键通过
+      const hasOpenDialog = document.querySelector('[role="dialog"]') !== null ||
+                            document.querySelector('[data-modal]') !== null ||
+                            document.querySelector('.fixed.inset-0') !== null
+      const hasOpenDropdown = document.querySelector('[data-dropdown-open]') !== null
+      
       // 遍历所有配置的快捷键
       const keybindings = keybindingStore.getAll()
       
@@ -85,7 +92,25 @@ export function useGlobalKeybindings(handlers: KeybindingHandlers, enabled = tru
           const handler = handlers[kb.action]
           
           // 某些快捷键在输入框中也应该生效
-          const allowInInput = ['cancelMessage', 'sendMessage'].includes(kb.action)
+          // 带修饰键的快捷键（Alt+X, Ctrl+Shift+X）不会和文本输入冲突，放行
+          const hasModifier = e.altKey || e.ctrlKey || e.metaKey
+          const allowInInput = ['cancelMessage', 'sendMessage'].includes(kb.action) || hasModifier
+          
+          // 当有模态框打开时，这些快捷键应该让模态框自己处理
+          const blockWhenDialogOpen = ['cancelMessage', 'sendMessage'].includes(kb.action)
+          
+          // 当有下拉菜单打开时，Escape 应该让下拉菜单自己处理
+          const blockWhenDropdownOpen = kb.action === 'cancelMessage'
+          
+          // 如果有模态框打开且是需要阻止的快捷键，跳过
+          if (hasOpenDialog && blockWhenDialogOpen) {
+            continue
+          }
+          
+          // 如果有下拉菜单打开且是 Escape，跳过让下拉菜单处理
+          if (hasOpenDropdown && blockWhenDropdownOpen) {
+            continue
+          }
           
           if (handler && (!isInput || allowInInput)) {
             e.preventDefault()

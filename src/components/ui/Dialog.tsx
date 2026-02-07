@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { CloseIcon } from '../Icons'
 
@@ -24,6 +24,32 @@ export function Dialog({
   // Animation state
   const [shouldRender, setShouldRender] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap
+  const handleFocusTrap = useCallback((e: KeyboardEvent) => {
+    if (e.key !== 'Tab' || !dialogRef.current) return
+    
+    const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusable.length === 0) return
+    
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    
+    if (e.shiftKey) {
+      if (document.activeElement === first || !dialogRef.current.contains(document.activeElement)) {
+        e.preventDefault()
+        last.focus()
+      }
+    } else {
+      if (document.activeElement === last || !dialogRef.current.contains(document.activeElement)) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+  }, [])
 
   // Mount/Unmount logic
   useEffect(() => {
@@ -46,14 +72,18 @@ export function Dialog({
   }, [shouldRender, isOpen])
 
   useEffect(() => {
+    if (!isOpen) return
+    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose()
+        return
       }
+      handleFocusTrap(e)
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, handleFocusTrap])
 
   if (!shouldRender) return null
 
@@ -70,6 +100,7 @@ export function Dialog({
     >
       {/* Dialog Panel */}
       <div 
+        ref={dialogRef}
         className={`
           relative bg-bg-000 border border-border-200 rounded-xl shadow-2xl 
           flex flex-col overflow-hidden transition-all duration-200 ease-out

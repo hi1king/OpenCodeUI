@@ -23,6 +23,8 @@ interface SidebarProps {
   onThemeChange?: (mode: ThemeMode, event?: React.MouseEvent) => void
   isWideMode?: boolean
   onToggleWideMode?: () => void
+  projectDialogOpen?: boolean
+  onProjectDialogClose?: () => void
 }
 
 export const Sidebar = memo(function Sidebar({
@@ -38,10 +40,19 @@ export const Sidebar = memo(function Sidebar({
   onThemeChange,
   isWideMode,
   onToggleWideMode,
+  projectDialogOpen,
+  onProjectDialogClose,
 }: SidebarProps) {
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false)
   const { addDirectory, pathInfo } = useDirectory()
   const [isMobile, setIsMobile] = useState(false)
+
+  // 外部触发打开 ProjectDialog（快捷键 / CommandPalette）
+  useEffect(() => {
+    if (projectDialogOpen) {
+      setIsProjectDialogOpen(true)
+    }
+  }, [projectDialogOpen])
   
   // Resizable state
   const [width, setWidth] = useState(() => {
@@ -65,6 +76,11 @@ export const Sidebar = memo(function Sidebar({
   const openProjectDialog = useCallback(() => {
     setIsProjectDialogOpen(true)
   }, [])
+
+  const closeProjectDialog = useCallback(() => {
+    setIsProjectDialogOpen(false)
+    onProjectDialogClose?.()
+  }, [onProjectDialogClose])
 
   // 检测移动端 (md breakpoint = 768px)
   useEffect(() => {
@@ -185,7 +201,7 @@ export const Sidebar = memo(function Sidebar({
         {/* Project Dialog */}
         <ProjectDialog
           isOpen={isProjectDialogOpen}
-          onClose={() => setIsProjectDialogOpen(false)}
+          onClose={closeProjectDialog}
           onSelect={handleAddProject}
           initialPath={pathInfo?.home}
         />
@@ -240,7 +256,7 @@ export const Sidebar = memo(function Sidebar({
       {/* Project Dialog */}
       <ProjectDialog
         isOpen={isProjectDialogOpen}
-        onClose={() => setIsProjectDialogOpen(false)}
+        onClose={closeProjectDialog}
         onSelect={handleAddProject}
         initialPath={pathInfo?.home}
       />

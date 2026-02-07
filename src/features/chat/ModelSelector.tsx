@@ -4,7 +4,7 @@
  * 适配：统一 Dropdown 体验，响应式宽度
  */
 
-import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, memo, forwardRef, useImperativeHandle } from 'react'
 import { ChevronDownIcon, SearchIcon, ThinkingIcon, EyeIcon } from '../../components/Icons'
 import type { ModelInfo } from '../../api'
 import {
@@ -22,13 +22,17 @@ interface ModelSelectorProps {
   disabled?: boolean
 }
 
-export const ModelSelector = memo(function ModelSelector({
+export interface ModelSelectorHandle {
+  openMenu: () => void
+}
+
+export const ModelSelector = memo(forwardRef<ModelSelectorHandle, ModelSelectorProps>(function ModelSelector({
   models,
   selectedModelKey,
   onSelect,
   isLoading = false,
   disabled = false,
-}: ModelSelectorProps) {
+}, ref) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
@@ -131,6 +135,11 @@ export const ModelSelector = memo(function ModelSelector({
     triggerRef.current?.focus()
   }, [])
 
+  // 暴露给外部的方法
+  useImperativeHandle(ref, () => ({
+    openMenu
+  }), [openMenu])
+
   const handleSelect = useCallback((model: ModelInfo) => {
     const key = getModelKey(model)
     recordModelUsage(model)
@@ -153,6 +162,20 @@ export const ModelSelector = memo(function ModelSelector({
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen, closeMenu])
+
+  // Esc 关闭 - document 级监听确保不依赖焦点位置
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        closeMenu()
+      }
+    }
+    document.addEventListener('keydown', handleEsc, { capture: true })
+    return () => document.removeEventListener('keydown', handleEsc, { capture: true })
   }, [isOpen, closeMenu])
 
   // 初始定位逻辑：打开时自动滚动到当前选中项
@@ -206,7 +229,7 @@ export const ModelSelector = memo(function ModelSelector({
   }, [itemIndices, flatList, highlightedIndex, handleSelect, closeMenu])
 
   return (
-    <div ref={containerRef} className="relative font-sans">
+    <div ref={containerRef} className="relative font-sans" data-dropdown-open={isOpen || undefined}>
       <button
         ref={triggerRef}
         onClick={() => isOpen ? closeMenu() : openMenu()}
@@ -331,7 +354,7 @@ export const ModelSelector = memo(function ModelSelector({
       </div>
     </div>
   )
-})
+}))
 
 function formatContext(limit: number): string {
   if (!limit) return ''
