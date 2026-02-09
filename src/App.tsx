@@ -314,7 +314,7 @@ function App() {
   } : undefined
 
   return (
-    <div className="relative h-screen flex bg-bg-100 overflow-hidden">
+    <div className="relative h-[var(--app-height)] flex bg-bg-100 overflow-hidden">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarExpanded}
@@ -334,7 +334,7 @@ function App() {
       />
 
       {/* Main Content Area: Chat Column + Right Panel */}
-      <div className="flex-1 flex min-w-0 h-screen overflow-hidden">
+      <div className="flex-1 flex min-w-0 h-full overflow-hidden">
         {/* Left Column: Chat + Bottom Panel */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Chat Area */}
