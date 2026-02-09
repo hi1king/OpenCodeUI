@@ -28,7 +28,10 @@ RUN apk add --no-cache \
     libstdc++
 
 # 官方方式安装 opencode
-RUN curl -fsSL https://opencode.ai/install | bash
+RUN curl -fsSL https://opencode.ai/install | bash \
+    && OPENCODE_BIN=$(find /root -name opencode -type f 2>/dev/null | head -1) \
+    && if [ -n "$OPENCODE_BIN" ]; then ln -sf "$OPENCODE_BIN" /usr/local/bin/opencode; fi \
+    && opencode --version
 
 # 前端产物
 COPY --from=frontend /app/dist /srv
