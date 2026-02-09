@@ -35,8 +35,9 @@ COPY --from=frontend /app/dist /srv
 
 # 配置文件
 COPY docker/Caddyfile /etc/caddy/Caddyfile
+RUN sed -i 's/\r$//' /etc/caddy/Caddyfile
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 RUN mkdir -p /workspace
 

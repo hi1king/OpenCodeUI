@@ -20,6 +20,7 @@ RUN npm run build
 FROM caddy:2-alpine
 
 COPY docker/Caddyfile /etc/caddy/Caddyfile
+RUN sed -i 's/\r$//' /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv
 
 EXPOSE 3000
