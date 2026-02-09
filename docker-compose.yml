@@ -1,35 +1,28 @@
 # ============================================
 # OpenCode WebUI - Docker Compose
 # ============================================
-# 
-# 使用方法:
-#   1. 复制 .env.example 为 .env 并填写 API Key
-#   2. docker compose up -d
-#   3. 访问 http://localhost:3080
 #
-# 环境变量说明:
-#   ANTHROPIC_API_KEY   - Anthropic API Key (Claude 模型)
-#   OPENAI_API_KEY      - OpenAI API Key (GPT 模型)
-#   OPENCODE_SERVER_PASSWORD - 服务器访问密码（可选）
+# 使用方法:
+#   cp .env.example .env    # 填写 API Key
+#   docker compose up -d    # 启动
+#
+# 物理机 nginx 反向代理到容器暴露的端口即可
 
 services:
   opencode:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile    # 完整版；换 Dockerfile.frontend 只部署前端
     container_name: opencode-webui
     restart: unless-stopped
     ports:
-      - "${PORT:-3080}:80"
+      - "${FRONTEND_PORT:-3000}:3000"   # 前端
+      - "${API_PORT:-4096}:4096"        # opencode API
     volumes:
-      # 挂载工作目录 - 你的项目代码
       - ${WORKSPACE:-./workspace}:/workspace
-      # 持久化 OpenCode 数据（会话历史、配置等）
       - opencode-data:/root/.local/share/opencode
       - opencode-config:/root/.config/opencode
     environment:
-      # ---- LLM Provider Keys ----
-      # 至少配置一个 Provider 的 API Key
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -37,23 +30,10 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - XAI_API_KEY=${XAI_API_KEY:-}
-
-      # ---- OpenCode 配置 ----
       - OPENCODE_SERVER_PASSWORD=${OPENCODE_SERVER_PASSWORD:-}
       - OPENCODE_SERVER_USERNAME=${OPENCODE_SERVER_USERNAME:-opencode}
-      - OPENCODE_DISABLE_AUTOUPDATE=true
-      - OPENCODE_DISABLE_TERMINAL_TITLE=true
-
-      # ---- 工作目录 ----
       - WORKSPACE=/workspace
-    # 安全限制 - 根据需求调整
-    # 如果需要 OpenCode 执行 Docker 命令，取消下面的注释
-    # privileged: true
-    # volumes:
-    #   - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   opencode-data:
-    driver: local
   opencode-config:
-    driver: local

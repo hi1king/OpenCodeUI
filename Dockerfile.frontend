@@ -1,0 +1,25 @@
+# ============================================
+# OpenCode WebUI - 纯前端
+# ============================================
+# 只有前端静态文件，不含 opencode 后端
+# 需要自行指向一个运行中的 opencode serve 实例
+# 暴露：3000
+
+# ---- 构建 ----
+FROM node:22-alpine AS build
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY . .
+# 默认 /api，物理机 nginx 反代到 opencode serve
+ENV VITE_API_BASE_URL=/api
+RUN npm run build
+
+# ---- 运行 ----
+FROM caddy:2-alpine
+
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
+
+EXPOSE 3000

@@ -1,73 +1,49 @@
 # ============================================
-# OpenCode WebUI - Multi-stage Dockerfile
+# OpenCode WebUI - 完整版
 # ============================================
-# 单容器部署：Nginx (前端) + OpenCode (后端)
+# opencode 后端 + 前端静态文件
+# 暴露：3000 (前端) / 4096 (API)
+# 由物理机 nginx 反向代理
 
-# ---- Stage 1: 前端构建 ----
-FROM node:22-alpine AS frontend-builder
+# ---- Stage 1: 构建前端 ----
+FROM node:22-alpine AS frontend
 
 WORKDIR /app
-
-# 依赖缓存层
 COPY package.json package-lock.json ./
-RUN npm ci
-
-# 构建前端 - API 地址指向同源 /api 前缀
+RUN npm ci --ignore-scripts
 COPY . .
 ENV VITE_API_BASE_URL=/api
 RUN npm run build
 
 # ---- Stage 2: 运行时 ----
-FROM ubuntu:24.04
+FROM alpine:3.21
 
-# 避免交互式安装
-ENV DEBIAN_FRONTEND=noninteractive
-
-# 安装运行时依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx \
+# opencode 需要的运行时依赖
+RUN apk add --no-cache \
+    bash \
     curl \
-    ca-certificates \
     git \
-    unzip \
-    gnupg \
-    sudo \
-    && rm -rf /var/lib/apt/lists/*
+    caddy \
+    libgcc \
+    libstdc++
 
-# 安装 OpenCode
+# 官方方式安装 opencode
 RUN curl -fsSL https://opencode.ai/install | bash
 
-# 确认安装
-RUN opencode --version || echo "opencode installed"
+# 前端产物
+COPY --from=frontend /app/dist /srv
 
-# 复制前端构建产物
-COPY --from=frontend-builder /app/dist /usr/share/nginx/html
-
-# 复制 nginx 配置
-RUN rm -f /etc/nginx/sites-enabled/default
-COPY docker/nginx.conf /etc/nginx/conf.d/opencode.conf
-
-# 复制启动脚本
+# 配置文件
+COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# 创建工作目录
 RUN mkdir -p /workspace
 
-# ---- 环境变量 ----
-# LLM Provider API Keys - 用户在 docker-compose 中配置
-# ANTHROPIC_API_KEY, OPENAI_API_KEY 等
+ENV OPENCODE_DISABLE_AUTOUPDATE=true \
+    OPENCODE_DISABLE_TERMINAL_TITLE=true \
+    WORKSPACE=/workspace
 
-# OpenCode 服务器配置
-ENV OPENCODE_DISABLE_AUTOUPDATE=true
-ENV OPENCODE_DISABLE_TERMINAL_TITLE=true
-
-# 工作目录
-ENV WORKSPACE=/workspace
-
-# 暴露端口
-EXPOSE 80
-
+EXPOSE 3000 4096
 WORKDIR /workspace
-
 ENTRYPOINT ["/entrypoint.sh"]
