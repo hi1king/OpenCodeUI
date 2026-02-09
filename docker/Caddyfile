@@ -1,6 +1,25 @@
+# OpenCode WebUI - Caddy 配置
+# 静态文件 + 反向代理 API 到后端容器
+
 :3000 {
-	root * /srv
-	file_server
-	try_files {path} /index.html
-	encode gzip
+    # 静态文件
+    root * /srv
+    file_server
+
+    # SPA 路由 - 所有非文件请求返回 index.html
+    try_files {path} /index.html
+
+    # 压缩
+    encode gzip
+
+    # API 反向代理到后端容器
+    # docker-compose 中服务名为 backend
+    handle /api/* {
+        reverse_proxy backend:4096
+    }
+
+    # WebSocket 支持 (opencode 需要)
+    handle /ws/* {
+        reverse_proxy backend:4096
+    }
 }
