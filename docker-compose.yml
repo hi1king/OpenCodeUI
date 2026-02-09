@@ -3,17 +3,17 @@
 # ============================================
 #
 # 架构:
-#   frontend (Caddy)  :3000 -> 静态文件 + 反代 /api 到 backend
+#   frontend (Caddy)  :3000 -> 静态文件
 #   backend  (Ubuntu) :4096 -> opencode serve
+#
+# 两个独立容器，各自暴露端口给宿主机 nginx 反代
 #
 # 使用方法:
 #   cp .env.example .env    # 填写 API Key
 #   docker compose up -d    # 启动
-#
-# 物理机 nginx 只需反代 3000 端口
 
 services:
-  # ---- 前端：静态文件 + 反向代理 ----
+  # ---- 前端：静态文件 ----
   frontend:
     build:
       context: .
@@ -22,9 +22,6 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
-    depends_on:
-      backend:
-        condition: service_healthy
 
   # ---- 后端：opencode serve ----
   backend:
@@ -33,9 +30,8 @@ services:
       dockerfile: docker/Dockerfile.backend
     container_name: opencode-backend
     restart: unless-stopped
-    # 不暴露到宿主机，只在 docker 网络内通信
-    expose:
-      - "4096"
+    ports:
+      - "127.0.0.1:${API_PORT:-4096}:4096"
     volumes:
       - ${WORKSPACE:-./workspace}:/workspace
       - opencode-data:/root/.local/share/opencode
@@ -51,12 +47,6 @@ services:
       - OPENCODE_SERVER_PASSWORD=${OPENCODE_SERVER_PASSWORD:-}
       - OPENCODE_SERVER_USERNAME=${OPENCODE_SERVER_USERNAME:-opencode}
       - WORKSPACE=/workspace
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://127.0.0.1:4096/global/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
 
 volumes:
   opencode-data:
