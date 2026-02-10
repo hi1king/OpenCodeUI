@@ -25,6 +25,8 @@ interface GlobalEventsCallbacks {
   onQuestionReplied?: (data: { sessionID: string; requestID: string }) => void
   onQuestionRejected?: (data: { sessionID: string; requestID: string }) => void
   onScrollRequest?: () => void
+  onSessionIdle?: (sessionID: string) => void
+  onSessionError?: (sessionID: string) => void
 }
 
 // ============================================
@@ -134,6 +136,8 @@ export function useGlobalEvents(callbacks?: GlobalEventsCallbacks) {
         messageStore.handleSessionIdle(data.sessionID)
         // 更新子 session 状态
         childSessionStore.markIdle(data.sessionID)
+        // 通知调用方
+        callbacksRef.current?.onSessionIdle?.(data.sessionID)
       },
 
       onSessionError: (error) => {
@@ -144,6 +148,8 @@ export function useGlobalEvents(callbacks?: GlobalEventsCallbacks) {
         messageStore.handleSessionError(error.sessionID)
         // 更新子 session 状态
         childSessionStore.markError(error.sessionID)
+        // 通知调用方
+        callbacksRef.current?.onSessionError?.(error.sessionID)
       },
 
       onSessionUpdated: (_session) => {

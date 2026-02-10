@@ -5,9 +5,9 @@ import {
   SunIcon, MoonIcon, SystemIcon, MaximizeIcon, MinimizeIcon, 
   PathAutoIcon, PathUnixIcon, PathWindowsIcon,
   GlobeIcon, PlusIcon, TrashIcon, CheckIcon, WifiIcon, WifiOffIcon, SpinnerIcon, KeyIcon,
-  SettingsIcon, KeyboardIcon, CloseIcon
+  SettingsIcon, KeyboardIcon, CloseIcon, BellIcon
 } from '../../components/Icons'
-import { usePathMode, useServerStore, useIsMobile } from '../../hooks'
+import { usePathMode, useServerStore, useIsMobile, useNotification } from '../../hooks'
 import { autoApproveStore } from '../../store'
 import { KeybindingsSection } from './KeybindingsSection'
 import type { ThemeMode } from '../../hooks'
@@ -286,6 +286,7 @@ function GeneralSettings({ themeMode, onThemeChange, isWideMode, onToggleWideMod
   const [autoApprove, setAutoApprove] = useState(autoApproveStore.enabled)
   const [addingServer, setAddingServer] = useState(false)
   const { servers, activeServer, addServer, removeServer, setActiveServer, checkHealth, checkAllHealth, getHealth } = useServerStore()
+  const { enabled: notificationsEnabled, setEnabled: setNotificationsEnabled, supported: notificationsSupported, permission: notificationPermission } = useNotification()
   
   useEffect(() => { checkAllHealth() }, [checkAllHealth])
 
@@ -351,6 +352,19 @@ function GeneralSettings({ themeMode, onThemeChange, isWideMode, onToggleWideMod
       >
         <Toggle enabled={autoApprove} onChange={handleAutoApprove} />
       </SettingRow>
+      {notificationsSupported && (
+        <SettingRow
+          label="Notifications"
+          description={notificationPermission === 'denied' ? 'Blocked by browser' : 'Notify when AI completes a response'}
+          icon={<BellIcon size={14} />}
+          onClick={() => notificationPermission !== 'denied' && setNotificationsEnabled(!notificationsEnabled)}
+        >
+          <Toggle 
+            enabled={notificationsEnabled && notificationPermission !== 'denied'} 
+            onChange={() => notificationPermission !== 'denied' && setNotificationsEnabled(!notificationsEnabled)} 
+          />
+        </SettingRow>
+      )}
 
       <Divider />
 

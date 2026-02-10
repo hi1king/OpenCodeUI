@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useMessageStore, messageStore, useSessionFamily, autoApproveStore } from '../store'
 import { useSessionManager, useGlobalEvents } from '../hooks'
 import { usePermissions, useRouter, usePermissionHandler, useMessageAnimation, useDirectory, useSessionContext } from '../hooks'
+import { useNotification } from './useNotification'
 import { 
   sendMessage, abortSession, 
   getSelectableAgents, 
@@ -54,6 +55,7 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
   const { sessionId: routeSessionId, navigateToSession, navigateHome } = useRouter()
   const { currentDirectory, sidebarExpanded, setSidebarExpanded } = useDirectory()
   const { createSession, sessions } = useSessionContext()
+  const { sendNotification } = useNotification()
   
   // Session family for permission polling
   const sessionFamily = useSessionFamily(routeSessionId)
@@ -137,6 +139,15 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
     },
     onScrollRequest: () => {
       chatAreaRef.current?.scrollToBottomIfAtBottom()
+    },
+    onSessionIdle: (sessionID) => {
+      // 页面不在前台时发送浏览器通知
+      const session = sessions.find(s => s.id === sessionID)
+      const title = session?.title || 'Session completed'
+      sendNotification('OpenCode', title, {
+        sessionId: sessionID,
+        directory: effectiveDirectory,
+      })
     },
   })
 
