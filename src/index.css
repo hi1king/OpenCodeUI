@@ -753,23 +753,13 @@ textarea.custom-scrollbar::-webkit-scrollbar-thumb {
     height: 16px;
   }
 
-  /* 移动端触摸目标最小尺寸 - 确保所有交互元素至少 44px */
-  button:not(.touch-target-sm),
-  [role="tab"],
-  [role="switch"],
-  [role="button"] {
-    min-height: 36px;
-    min-width: 36px;
-  }
-
-  /* SegmentedControl 内按钮适配 */
-  [role="tablist"] button {
-    min-height: 40px;
+  /* 移动端触摸目标最小尺寸 - 只对独立按钮生效，不影响紧凑组件内部 */
+  button:not(.touch-target-sm):not([role="tab"]):not([role="switch"]):not([data-compact]) {
+    min-height: 32px;
   }
 
   /* 输入框适配 */
   input, textarea, select {
-    min-height: 40px;
     font-size: 16px !important; /* 防止 iOS 缩放 */
   }
 }

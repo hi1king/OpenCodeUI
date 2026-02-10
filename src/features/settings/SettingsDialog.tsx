@@ -90,11 +90,11 @@ function SegmentedControl<T extends string>({ value, options, onChange }: Segmen
           aria-selected={opt.value === value}
           tabIndex={opt.value === value ? 0 : -1}
           onClick={(e) => onChange(opt.value, e)}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[13px] font-medium transition-colors duration-200
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-[13px] font-medium transition-colors duration-200
             ${opt.value === value ? 'text-text-100' : 'text-text-400 hover:text-text-200'}`}
         >
           {opt.icon}
-          <span>{opt.label}</span>
+          <span className="truncate">{opt.label}</span>
         </button>
       ))}
     </div>

@@ -97,6 +97,9 @@ export function DirectoryProvider({ children }: { children: ReactNode }) {
   const addDirectory = useCallback((path: string) => {
     const normalized = normalizeToForwardSlash(path)
     
+    // 验证路径非空
+    if (!normalized || normalized === '/' || normalized === '.') return
+    
     // 使用 isSameDirectory 检查是否已存在（处理大小写和斜杠差异）
     if (savedDirectories.some(d => isSameDirectory(d.path, normalized))) {
       setCurrentDirectory(normalized)

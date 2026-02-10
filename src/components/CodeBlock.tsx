@@ -77,7 +77,7 @@ export const CodeBlock = memo(function CodeBlock({
         <span className="text-xs text-text-400 font-medium uppercase tracking-wider">
           {language || 'text'}
         </span>
-        <CopyButton text={code} position="static" className="!p-1 hover:bg-bg-300" />
+        <CopyButton text={code} position="static" className="!p-1" />
       </div>
       
       {/* Scrollable Content */}

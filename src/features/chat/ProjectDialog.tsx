@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { FolderIcon, ArrowUpIcon, SpinnerIcon, PlusIcon } from '../../components/Icons'
 import { listDirectory, getPath } from '../../api'
-import { fileErrorHandler, normalizeToForwardSlash } from '../../utils'
+import { fileErrorHandler } from '../../utils'
 
 // ============================================
 // Types
@@ -34,7 +34,8 @@ const PATH_SEP = '/'
 
 function normalizePath(p: string): string {
   if (!p) return ''
-  return normalizeToForwardSlash(p)
+  // 只转换反斜杠为正斜杠，保留尾斜杠（不能用 normalizeToForwardSlash，它会删尾斜杠）
+  return p.replace(/\\/g, '/')
 }
 
 function getDirectoryPath(path: string): string {
@@ -92,6 +93,10 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
 
   useEffect(() => {
     if (isOpen) {
+      // 重置缓存，确保每次打开都加载最新数据
+      loadedPathRef.current = ''
+      setItems([])
+      
       const initPath = async () => {
         let path = initialPath
         if (!path) {
@@ -117,7 +122,8 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
 
   useEffect(() => {
     if (!isOpen || !currentDir) return
-    if (currentDir === loadedPathRef.current && items.length > 0) return
+    // 目录变化时始终重新加载
+    if (currentDir === loadedPathRef.current) return
 
     setIsLoading(true)
     setError(null)
@@ -148,9 +154,10 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
         fileErrorHandler('list directory', err)
         setError(err.message)
         setItems([])
+        loadedPathRef.current = ''
       })
       .finally(() => setIsLoading(false))
-  }, [isOpen, currentDir, items.length])
+  }, [isOpen, currentDir])
 
   // ==========================================
   // Scroll to Selection
@@ -209,6 +216,8 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
 
   const handleConfirmCurrent = useCallback(() => {
     const path = inputValue.endsWith(PATH_SEP) ? inputValue.slice(0, -1) : inputValue
+    // 不允许添加空路径或根路径
+    if (!path || path === '.' || path === '/') return
     onSelect(path)
     onClose()
   }, [inputValue, onSelect, onClose])
@@ -244,12 +253,18 @@ export function ProjectDialog({ isOpen, onClose, onSelect, initialPath = '' }: P
       case 'Enter':
         e.preventDefault()
         if (filteredItems.length > 0) {
-          onSelect(filteredItems[selectedIndex].path)
+          const selectedPath = filteredItems[selectedIndex].path
+          if (selectedPath) {
+            onSelect(selectedPath)
+            onClose()
+          }
         } else {
           const path = inputValue.endsWith(PATH_SEP) ? inputValue.slice(0, -1) : inputValue
-          onSelect(path)
+          if (path && path !== '.' && path !== '/') {
+            onSelect(path)
+            onClose()
+          }
         }
-        onClose()
         break
       case 'Escape':
         e.preventDefault()

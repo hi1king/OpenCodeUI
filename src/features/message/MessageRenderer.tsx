@@ -120,12 +120,12 @@ const UserMessageView = memo(function UserMessageView({ message, onUndo, canUndo
         )}
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {/* Undo button */}
           {canUndo && onUndo && (
             <button
               onClick={() => onUndo(info.id)}
-              className="p-1.5 rounded-md transition-all duration-200 bg-bg-200/80 text-text-400 hover:text-text-100 hover:bg-bg-100"
+              className="p-1.5 rounded-md transition-colors duration-150 text-text-400 hover:text-text-200"
               title="Undo from here"
             >
               <UndoIcon />
@@ -256,7 +256,7 @@ const AssistantMessageView = memo(function AssistantMessageView({ message, onEns
 
       {/* Copy button */}
       {fullText.trim() && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <CopyButton text={fullText} position="static" />
         </div>
       )}

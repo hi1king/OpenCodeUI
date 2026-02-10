@@ -219,7 +219,7 @@ function ProjectItem({ project, displayName, path, onSelect, onRemove }: Project
       {onRemove && (
         <div 
           onClick={(e) => { e.stopPropagation(); onRemove() }}
-          className="p-1 rounded text-text-400 hover:text-danger-100 hover:bg-danger-100/10 opacity-0 group-hover:opacity-100 transition-all"
+          className="p-1 rounded text-text-400 hover:text-danger-100 hover:bg-danger-100/10 md:opacity-0 md:group-hover:opacity-100 transition-all"
           title="Remove"
         >
           <TrashIcon className="w-3 h-3" />

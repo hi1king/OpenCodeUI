@@ -48,17 +48,15 @@ export function CopyButton({ text, className, position = 'absolute', groupName }
     <button
       onClick={handleCopy}
       className={clsx(
-        // Base styles matching IconButton ghost variant
         "inline-flex items-center justify-center",
-        "h-7 w-7 p-1.5 rounded-lg",
-        "transition-all duration-150 active:scale-90",
-        "backdrop-blur-sm z-10",
+        "h-7 w-7 p-1.5 rounded-md",
+        "transition-colors duration-150",
         // State styles
         copied 
-          ? "bg-success-bg text-success-100" 
-          : "bg-bg-200/80 text-text-400 hover:text-text-100 hover:bg-bg-100",
+          ? "text-success-100" 
+          : "text-text-400 hover:text-text-200",
         // Position variant
-        position === 'absolute' && `absolute top-2 right-2 opacity-0 ${hoverClass}`,
+        position === 'absolute' && `absolute top-2 right-2 z-10 opacity-0 ${hoverClass}`,
         className
       )}
       title={copied ? "Copied!" : "Copy"}
