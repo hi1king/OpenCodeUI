@@ -1,4 +1,4 @@
-# OpenCode WebUI
+# OpenCodeUI
 
 一个为 [OpenCode](https://github.com/opencode-ai/opencode) 打造的第三方 Web 前端界面。
 
@@ -53,8 +53,8 @@
 
 ```bash
 # 克隆
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/<your-username>/OpenCodeUI.git
+cd OpenCodeUI
 
 # 安装依赖
 npm install
