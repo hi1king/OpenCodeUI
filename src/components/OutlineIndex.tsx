@@ -39,7 +39,7 @@ const LABEL_THRESHOLD = 0.65
 
 const TICK_W_MIN = 8
 const TICK_W_MAX = 22
-const TICK_H = 2
+const TICK_H = 2.5
 const MARGIN_MIN = 1
 const MARGIN_MAX = 8
 
@@ -138,7 +138,6 @@ const DesktopAperture = memo(function DesktopAperture({
   const containerRef = useRef<HTMLDivElement>(null)
   const cursorYRef = useRef<number | null>(null)
   const strengthsRef = useRef<number[]>([])
-  const hlStateRef = useRef<boolean[]>([])
   const rafIdRef = useRef(0)
   const isHoveringRef = useRef(false)
 
@@ -149,7 +148,6 @@ const DesktopAperture = memo(function DesktopAperture({
 
   useEffect(() => {
     strengthsRef.current = entries.map(() => 0)
-    hlStateRef.current = entries.map(() => false)
   }, [entries.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Animation loop ----
@@ -192,23 +190,18 @@ const DesktopAperture = memo(function DesktopAperture({
       tick.style.width = `${baseW + s * (TICK_W_MAX - TICK_W_MIN)}px`
       item.style.marginTop = `${MARGIN_MIN + s * (MARGIN_MAX - MARGIN_MIN)}px`
       item.style.marginBottom = `${MARGIN_MIN + s * (MARGIN_MAX - MARGIN_MIN)}px`
-      tick.style.opacity = `${(isActive ? 0.6 : 0.3) + s * 0.7}`
 
-      // tick 颜色
+      // tick 颜色 —— 不用 opacity，直接实色
       const shouldHL = s > 0.5
-      if (shouldHL !== hlStateRef.current[i]) {
-        hlStateRef.current[i] = shouldHL
-        if (shouldHL) {
-          tick.classList.remove('bg-text-400/40', 'bg-text-300')
-          tick.classList.add('bg-accent-main-100')
-        } else {
-          tick.classList.remove('bg-accent-main-100')
-          tick.classList.add(isActive ? 'bg-text-300' : 'bg-text-400/40')
-        }
-      }
-      if (!shouldHL && isActive && !tick.classList.contains('bg-text-300')) {
-        tick.classList.remove('bg-text-400/40')
-        tick.classList.add('bg-text-300')
+      if (shouldHL) {
+        tick.style.backgroundColor = 'hsl(var(--accent-main-200))'
+        tick.style.boxShadow = '0 0 3px hsl(var(--accent-main-100) / 0.4)'
+      } else if (isActive) {
+        tick.style.backgroundColor = 'hsl(var(--accent-main-100) / 0.55)'
+        tick.style.boxShadow = 'none'
+      } else {
+        tick.style.backgroundColor = 'hsl(var(--border-300))'
+        tick.style.boxShadow = 'none'
       }
 
       // label
@@ -293,11 +286,13 @@ const DesktopAperture = memo(function DesktopAperture({
             {/* Tick mark */}
             <div
               data-tick
-              className={`rounded-full shrink-0 ${isActive ? 'bg-text-300' : 'bg-text-400/40'}`}
+              className="rounded-full shrink-0"
               style={{
                 width: `${isActive ? 13 : TICK_W_MIN}px`,
                 height: `${TICK_H}px`,
-                opacity: isActive ? 0.6 : 0.3,
+                backgroundColor: isActive
+                  ? 'hsl(var(--accent-main-100) / 0.55)'
+                  : 'hsl(var(--border-300))',
               }}
             />
           </div>
@@ -326,6 +321,7 @@ const MobileAperture = memo(function MobileAperture({
 }: ApertureProps) {
   const [overlayVisible, setOverlayVisible] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const overlayTitleRef = useRef<HTMLDivElement>(null)
   const touchYRef = useRef<number | null>(null)
   const strengthsRef = useRef<number[]>([])
   const rafIdRef = useRef(0)
@@ -392,15 +388,18 @@ const MobileAperture = memo(function MobileAperture({
       tick.style.width = `${w}px`
       item.style.marginTop = `${m}px`
       item.style.marginBottom = `${m}px`
-      tick.style.opacity = `${(isActive ? 0.5 : 0.25) + s * 0.75}`
+      tick.style.opacity = '1'
 
       // tick 颜色
       if (s > 0.5) {
-        tick.style.backgroundColor = 'hsl(var(--accent-main-100))'
+        tick.style.backgroundColor = 'hsl(var(--accent-main-200))'
+        tick.style.boxShadow = '0 0 3px hsl(var(--accent-main-100) / 0.4)'
       } else if (isActive) {
-        tick.style.backgroundColor = 'hsl(var(--text-300))'
+        tick.style.backgroundColor = 'hsl(var(--accent-main-100) / 0.55)'
+        tick.style.boxShadow = 'none'
       } else {
-        tick.style.backgroundColor = 'hsl(var(--text-400) / 0.3)'
+        tick.style.backgroundColor = 'hsl(var(--border-300))'
+        tick.style.boxShadow = 'none'
       }
 
       // label
@@ -416,10 +415,25 @@ const MobileAperture = memo(function MobileAperture({
       }
     })
 
-    // 焦点切换 → 震动（滑动中只反馈，不跳转）
+    // 焦点切换 → 震动 + 更新 overlay 标题
     if (focusIdx >= 0 && maxS > 0.5 && focusIdx !== prevFocusIdxRef.current) {
       prevFocusIdxRef.current = focusIdx
       vibrate()
+      // 更新模糊层上的标题
+      const titleEl = overlayTitleRef.current
+      if (titleEl) {
+        titleEl.textContent = entries[focusIdx].title
+        titleEl.style.opacity = '1'
+        titleEl.style.transform = 'translateY(0px)'
+      }
+    }
+    // 没有焦点时淡出标题
+    if ((focusIdx < 0 || maxS <= 0.5) && !isTouchingRef.current) {
+      const titleEl = overlayTitleRef.current
+      if (titleEl) {
+        titleEl.style.opacity = '0'
+        titleEl.style.transform = 'translateY(4px)'
+      }
     }
 
     if (isTouchingRef.current || alive) {
@@ -459,6 +473,12 @@ const MobileAperture = memo(function MobileAperture({
     isTouchingRef.current = false
     touchYRef.current = null
     prevFocusIdxRef.current = -1
+    // 淡出 overlay 标题
+    const titleEl = overlayTitleRef.current
+    if (titleEl) {
+      titleEl.style.opacity = '0'
+      titleEl.style.transform = 'translateY(4px)'
+    }
     // 回弹动画继续跑，归零后 runLoop 会 setOverlayVisible(false)
     ensureLoop()
   }, [entries, onScrollToIndex, ensureLoop])
@@ -469,9 +489,15 @@ const MobileAperture = memo(function MobileAperture({
 
   return (
     <div className="md:hidden">
-      {/* 背景模糊 overlay */}
+      {/* 背景模糊 overlay + 居中标题 */}
       {overlayVisible && (
-        <div className="absolute inset-0 z-[14] bg-bg-100/40 backdrop-blur-sm" />
+        <div className="absolute inset-0 z-[14] bg-bg-100/40 backdrop-blur-sm flex items-start justify-center pt-[30%]">
+          <div
+            ref={overlayTitleRef}
+            className="text-lg font-semibold text-text-100 px-5 py-2 rounded-xl bg-bg-000/60 backdrop-blur-md shadow-lg max-w-[75vw] text-center truncate pointer-events-none"
+            style={{ opacity: 0, transform: 'translateY(4px)', transition: 'opacity 0.15s ease-out, transform 0.15s ease-out' }}
+          />
+        </div>
       )}
 
       {/* 索引条 */}
@@ -516,10 +542,9 @@ const MobileAperture = memo(function MobileAperture({
                 style={{
                   width: `${isVisibleEntry ? 10 : MOBILE_TICK_W_MIN}px`,
                   height: `${TICK_H}px`,
-                  opacity: isVisibleEntry ? 0.5 : 0.25,
                   backgroundColor: isVisibleEntry
-                    ? 'hsl(var(--text-300))'
-                    : 'hsl(var(--text-400) / 0.3)',
+                    ? 'hsl(var(--accent-main-100) / 0.55)'
+                    : 'hsl(var(--border-300))',
                 }}
               />
             </div>
