@@ -17,8 +17,8 @@ export { layoutStore, useLayoutStore } from './layoutStore'
 export { autoApproveStore } from './autoApproveStore'
 export type { AutoApproveRule } from './autoApproveStore'
 
-export { serverStore, makeBasicAuthHeader } from './serverStore'
-export type { ServerConfig, ServerHealth, ServerAuth } from './serverStore'
+export { serverStore } from './serverStore'
+export type { ServerConfig, ServerHealth } from './serverStore'
 
 export { keybindingStore, parseKeybinding, formatKeybinding, keyEventToString, matchesKeybinding } from './keybindingStore'
 export type { KeybindingAction, KeybindingConfig, ParsedKeybinding } from './keybindingStore'

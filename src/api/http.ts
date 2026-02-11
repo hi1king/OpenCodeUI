@@ -4,7 +4,7 @@
 // ============================================
 
 import { API_BASE_URL } from '../constants'
-import { serverStore, makeBasicAuthHeader } from '../store/serverStore'
+import { serverStore } from '../store/serverStore'
 
 /**
  * 获取当前 API Base URL
@@ -12,18 +12,6 @@ import { serverStore, makeBasicAuthHeader } from '../store/serverStore'
  */
 export function getApiBaseUrl(): string {
   return serverStore.getActiveBaseUrl()
-}
-
-/**
- * 获取当前活动服务器的 Authorization header
- * 如果有认证信息则返回 Basic Auth header，否则返回 undefined
- */
-export function getAuthHeader(): string | undefined {
-  const auth = serverStore.getActiveAuth()
-  if (auth) {
-    return makeBasicAuthHeader(auth)
-  }
-  return undefined
 }
 
 /** @deprecated 使用 getApiBaseUrl() 代替 */
@@ -72,9 +60,10 @@ export interface RequestOptions {
 /**
  * 通用 HTTP 请求函数
  * 
- * 直接请求后端服务器，支持 CORS 跨域
- * - 后端需要设置 Access-Control-Allow-Origin
- * - 如果需要发送凭证（cookies），后端还需设置 Access-Control-Allow-Credentials
+ * 直接请求后端服务器
+ * - 同源部署时，浏览器遇到 401 + WWW-Authenticate 会自动弹出认证对话框
+ * - 跨域部署时需要后端正确配置 CORS，或使用反向代理实现同源
+ * - 前端不管理任何认证凭据，完全由浏览器原生机制处理
  */
 export async function request<T>(
   path: string,
@@ -83,13 +72,8 @@ export async function request<T>(
 ): Promise<T> {
   const { method = 'GET', body, headers = {} } = options
   
-  // 自动添加认证 header
-  const authHeader = getAuthHeader()
   const requestHeaders: Record<string, string> = {
     ...headers,
-  }
-  if (authHeader) {
-    requestHeaders['Authorization'] = authHeader
   }
   
   const init: RequestInit = {

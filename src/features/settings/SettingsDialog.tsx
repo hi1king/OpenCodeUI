@@ -12,7 +12,7 @@ import { autoApproveStore } from '../../store'
 import { KeybindingsSection } from './KeybindingsSection'
 import type { ThemeMode } from '../../hooks'
 import type { PathMode } from '../../utils/directoryUtils'
-import type { ServerConfig, ServerHealth, ServerAuth } from '../../store/serverStore'
+import type { ServerConfig, ServerHealth } from '../../store/serverStore'
 
 // ============================================
 // Types
@@ -222,15 +222,12 @@ function ServerItem({ server, health, isActive, onSelect, onDelete, onCheckHealt
 // ============================================
 
 function AddServerForm({ onAdd, onCancel }: { 
-  onAdd: (name: string, url: string, auth?: ServerAuth) => void
+  onAdd: (name: string, url: string) => void
   onCancel: () => void 
 }) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [showAuth, setShowAuth] = useState(false)
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -238,10 +235,7 @@ function AddServerForm({ onAdd, onCancel }: {
     if (!url.trim()) { setError('URL required'); return }
     try { new URL(url) } catch { setError('Invalid URL'); return }
     
-    const auth: ServerAuth | undefined = (username.trim() && password.trim())
-      ? { username: username.trim(), password: password.trim() }
-      : undefined
-    onAdd(name.trim(), url.trim(), auth)
+    onAdd(name.trim(), url.trim())
   }
 
   const inputCls = "w-full h-8 px-3 text-[13px] bg-bg-000 border border-border-200 rounded-md focus:outline-none focus:border-accent-main-100/50 text-text-100 placeholder:text-text-400"
@@ -258,18 +252,9 @@ function AddServerForm({ onAdd, onCancel }: {
         <input type="text" value={url} onChange={e => { setUrl(e.target.value); setError('') }}
           placeholder="http://192.168.1.100:4096" className={`${inputCls} font-mono`} />
       </div>
-      <button type="button" onClick={() => setShowAuth(!showAuth)}
-        className="flex items-center gap-1 text-[11px] text-text-400 hover:text-text-200">
-        <KeyIcon size={10} /> {showAuth ? 'Hide' : 'Show'} Auth
-      </button>
-      {showAuth && (
-        <div className="space-y-2 pl-3 border-l-2 border-border-200/50">
-          <input type="text" value={username} onChange={e => { setUsername(e.target.value); setError('') }}
-            placeholder="Username" className={inputCls} />
-          <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError('') }}
-            placeholder="Password" className={inputCls} />
-        </div>
-      )}
+      <div className="text-[11px] text-text-400">
+        If the server requires a password, visit the URL in your browser first to authenticate
+      </div>
       {error && <p className="text-[11px] text-danger-100">{error}</p>}
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
@@ -537,7 +522,7 @@ function GeneralSettings({ themeMode, onThemeChange, isWideMode, onToggleWideMod
         ))}
         {addingServer && (
           <AddServerForm
-            onAdd={(n, u, a) => { const s = addServer({ name: n, url: u, auth: a }); setAddingServer(false); checkHealth(s.id) }}
+            onAdd={(n, u) => { const s = addServer({ name: n, url: u }); setAddingServer(false); checkHealth(s.id) }}
             onCancel={() => setAddingServer(false)}
           />
         )}

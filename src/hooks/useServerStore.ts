@@ -3,8 +3,8 @@
 // ============================================
 
 import { useSyncExternalStore, useCallback } from 'react'
-import { serverStore, type ServerConfig, type ServerHealth, type ServerAuth } from '../store/serverStore'
-export type { ServerConfig, ServerHealth, ServerAuth }
+import { serverStore, type ServerConfig, type ServerHealth } from '../store/serverStore'
+export type { ServerConfig, ServerHealth }
 
 /**
  * 订阅 serverStore 的 React hook

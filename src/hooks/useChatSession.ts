@@ -62,6 +62,7 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
 
   // Session Manager
   const {
+    loadSession,
     loadMoreHistory,
     handleUndo,
     handleRedo,
@@ -173,6 +174,12 @@ export function useChatSession({ chatAreaRef, currentModel }: UseChatSessionOpti
         sessionId: sessionID,
         directory: effectiveDirectory,
       })
+    },
+    onReconnected: () => {
+      // SSE 重连后重新加载当前会话，补齐断连期间可能丢失的消息
+      if (routeSessionId) {
+        loadSession(routeSessionId)
+      }
     },
   })
 

@@ -186,4 +186,6 @@ export interface EventCallbacks {
   onWorktreeFailed?: (data: WorktreeFailedPayload) => void
   onVcsBranchUpdated?: (data: VcsBranchUpdatedPayload) => void
   onError?: (error: Error) => void
+  /** SSE 重连成功后触发，通知订阅者可能需要刷新数据 */
+  onReconnected?: () => void
 }

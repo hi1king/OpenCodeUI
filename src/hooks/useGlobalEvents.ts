@@ -27,6 +27,8 @@ interface GlobalEventsCallbacks {
   onScrollRequest?: () => void
   onSessionIdle?: (sessionID: string) => void
   onSessionError?: (sessionID: string) => void
+  /** SSE 重连成功后触发，调用方可刷新当前 session 数据 */
+  onReconnected?: () => void
 }
 
 // ============================================
@@ -216,6 +218,17 @@ export function useGlobalEvents(callbacks?: GlobalEventsCallbacks) {
         if (belongsToCurrentSession(data.sessionID)) {
           callbacksRef.current?.onQuestionRejected?.(data)
         }
+      },
+
+      // ============================================
+      // Reconnected → 通知调用方刷新数据
+      // ============================================
+
+      onReconnected: () => {
+        if (import.meta.env.DEV) {
+          console.log('[GlobalEvents] SSE reconnected, notifying for data refresh')
+        }
+        callbacksRef.current?.onReconnected?.()
       },
     })
 

@@ -2,7 +2,7 @@
 // Global Event Subscription (SSE) - Singleton Pattern
 // ============================================
 
-import { getApiBaseUrl, getAuthHeader } from './http'
+import { getApiBaseUrl } from './http'
 import type {
   ApiMessageWithParts,
   ApiPart,
@@ -71,6 +71,9 @@ let singletonController: AbortController | null = null
 let heartbeatTimer: ReturnType<typeof setTimeout> | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let isConnecting = false
+let lifecycleListenersRegistered = false
+/** 标记连接曾经成功过（用于判断是否为"重连"） */
+let hasConnectedBefore = false
 
 function resetHeartbeat() {
   if (heartbeatTimer) clearTimeout(heartbeatTimer)
@@ -113,15 +116,11 @@ function connectSingleton() {
     console.log('[SSE] Connecting singleton...')
   }
 
-  // 构建请求头，如果有认证信息则添加
-  const headers: Record<string, string> = {}
-  const authHeader = getAuthHeader()
-  if (authHeader) {
-    headers['Authorization'] = authHeader
-  }
-  
+  // 注册生命周期监听器（首次连接时）
+  registerLifecycleListeners()
+
+  // 认证由浏览器原生处理（同源时遇到 401 自动弹认证对话框）
   fetch(`${getApiBaseUrl()}/global/event`, {
-    headers,
     signal: singletonController.signal,
   })
     .then(async (response) => {
@@ -131,6 +130,10 @@ function connectSingleton() {
         throw new Error(`Failed to subscribe: ${response.status}`)
       }
 
+      // 如果之前连接过，这次就是"重连"，通知订阅者刷新数据
+      const isReconnect = hasConnectedBefore
+      hasConnectedBefore = true
+
       updateConnectionState({ 
         state: 'connected', 
         reconnectAttempt: 0,
@@ -138,7 +141,12 @@ function connectSingleton() {
       })
       resetHeartbeat()
       if (import.meta.env.DEV) {
-        console.log('[SSE] Singleton connected')
+        console.log('[SSE] Singleton connected', isReconnect ? '(reconnected)' : '(first)')
+      }
+
+      // 重连成功后通知所有订阅者
+      if (isReconnect) {
+        allSubscribers.forEach(cb => cb.onReconnected?.())
       }
 
       const reader = response.body?.getReader()
@@ -217,6 +225,94 @@ function disconnectSingleton() {
   }
   isConnecting = false
   updateConnectionState({ state: 'disconnected' })
+}
+
+// ============================================
+// Lifecycle Listeners (Visibility + Network)
+// ============================================
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    // 页面恢复前台
+    if (connectionInfo.state !== 'connected' && allSubscribers.size > 0) {
+      if (import.meta.env.DEV) {
+        console.log('[SSE] Page became visible, forcing reconnect...')
+      }
+      // 取消当前重连计划，立即重连
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      reconnectTimer = null
+      updateConnectionState({ reconnectAttempt: 0 })
+      
+      // 断开旧连接（如果还在）
+      if (singletonController) {
+        singletonController.abort()
+        singletonController = null
+      }
+      isConnecting = false
+      
+      connectSingleton()
+    }
+  } else {
+    // 页面进入后台 - 暂停心跳检测（移动端 timer 会被冻结）
+    if (heartbeatTimer) {
+      clearTimeout(heartbeatTimer)
+      heartbeatTimer = null
+    }
+  }
+}
+
+function handleOnline() {
+  if (import.meta.env.DEV) {
+    console.log('[SSE] Network online, forcing reconnect...')
+  }
+  if (connectionInfo.state !== 'connected' && allSubscribers.size > 0) {
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    reconnectTimer = null
+    updateConnectionState({ reconnectAttempt: 0 })
+    
+    if (singletonController) {
+      singletonController.abort()
+      singletonController = null
+    }
+    isConnecting = false
+    
+    connectSingleton()
+  }
+}
+
+function handleOffline() {
+  if (import.meta.env.DEV) {
+    console.log('[SSE] Network offline')
+  }
+  // 标记为断连，但不尝试重连（没网重连也没用）
+  if (connectionInfo.state === 'connected' || connectionInfo.state === 'connecting') {
+    if (singletonController) {
+      singletonController.abort()
+      singletonController = null
+    }
+    isConnecting = false
+    if (heartbeatTimer) clearTimeout(heartbeatTimer)
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    updateConnectionState({ state: 'disconnected', error: 'Network offline' })
+  }
+}
+
+function registerLifecycleListeners() {
+  if (lifecycleListenersRegistered) return
+  lifecycleListenersRegistered = true
+  
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('online', handleOnline)
+  window.addEventListener('offline', handleOffline)
+}
+
+function unregisterLifecycleListeners() {
+  if (!lifecycleListenersRegistered) return
+  lifecycleListenersRegistered = false
+  
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('online', handleOnline)
+  window.removeEventListener('offline', handleOffline)
 }
 
 // 广播事件给所有订阅者
@@ -316,9 +412,10 @@ export function subscribeToEvents(callbacks: EventCallbacks): () => void {
   return () => {
     allSubscribers.delete(callbacks)
     
-    // 如果没有订阅者了，断开连接
+    // 如果没有订阅者了，断开连接并清理监听器
     if (allSubscribers.size === 0) {
       disconnectSingleton()
+      unregisterLifecycleListeners()
     }
   }
 }
