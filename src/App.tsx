@@ -75,51 +75,26 @@ function App() {
     return () => ro.disconnect()
   }, [])
 
+  // Browser/PWA keyboard inset (Android Tauri uses adjustResize + native insets)
   useEffect(() => {
+    if (document.documentElement.classList.contains('tauri-app')) return // Tauri 用原生处理
     const root = document.documentElement
     const updateKeyboardInset = () => {
       const viewport = window.visualViewport
-      if (!viewport) {
-        root.style.setProperty('--keyboard-inset-bottom', '0px')
-        return
-      }
+      if (!viewport) return
       const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
       root.style.setProperty('--keyboard-inset-bottom', `${Math.round(inset)}px`)
     }
-
-    const handleFocusIn = (event: FocusEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.matches('input, textarea, select, [contenteditable="true"]')) {
-        root.classList.add('keyboard-open')
-      }
-    }
-
-    const handleFocusOut = (event: FocusEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.matches('input, textarea, select, [contenteditable="true"]')) {
-        root.classList.remove('keyboard-open')
-      }
-    }
-
     updateKeyboardInset()
-    window.addEventListener('resize', updateKeyboardInset)
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', updateKeyboardInset)
       window.visualViewport.addEventListener('scroll', updateKeyboardInset)
     }
-    window.addEventListener('focusin', handleFocusIn)
-    window.addEventListener('focusout', handleFocusOut)
-
     return () => {
-      window.removeEventListener('resize', updateKeyboardInset)
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', updateKeyboardInset)
         window.visualViewport.removeEventListener('scroll', updateKeyboardInset)
       }
-      window.removeEventListener('focusin', handleFocusIn)
-      window.removeEventListener('focusout', handleFocusOut)
     }
   }, [])
 
@@ -458,7 +433,7 @@ function App() {
             />
 
             {/* Floating Input Box */}
-            <div ref={inputBoxWrapperRef} className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none" style={{ transform: 'translateY(calc(-1 * var(--keyboard-inset-bottom, 0px)))' }}>
+            <div ref={inputBoxWrapperRef} className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
               {/* Double-Esc cancel hint */}
               {showCancelHint && (
                 <div className="flex justify-center mb-2 pointer-events-none">

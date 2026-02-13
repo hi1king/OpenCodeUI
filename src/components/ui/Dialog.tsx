@@ -153,7 +153,6 @@ export function Dialog({
           relative bg-bg-000 border border-border-200 rounded-xl shadow-2xl 
           flex flex-col overflow-hidden
           ${isDragging.current ? '' : 'transition-all duration-200 ease-out'}
-          keyboard-inset-shift
           ${className}
         `}
         style={{ 
@@ -189,7 +188,7 @@ export function Dialog({
         )}
         
         {/* Content */}
-        <div className="p-5 overflow-y-auto custom-scrollbar max-h-[80vh] keyboard-inset-padding">
+        <div className="p-5 overflow-y-auto custom-scrollbar max-h-[80vh]">
           {children}
         </div>
       </div>

@@ -50,24 +50,11 @@ html, body, #root {
   padding-right: var(--safe-area-inset-right);
 }
 
-.keyboard-inset-adjust {
-  transform: translateY(calc(-1 * var(--keyboard-inset-bottom, 0px)));
-}
-
-:root.keyboard-open #root {
-  padding-bottom: var(--keyboard-inset-bottom);
-}
-
-:root.keyboard-open .keyboard-inset-padding {
-  padding-bottom: var(--keyboard-inset-bottom);
-}
-
-:root.keyboard-open .keyboard-inset-shift {
-  transform: translateY(calc(-1 * var(--keyboard-inset-bottom, 0px)));
-}
-
-:root.keyboard-open .keyboard-inset-cancel {
-  transform: translateY(var(--keyboard-inset-bottom));
+/* Browser/PWA: keyboard inset via visualViewport (Tauri uses adjustResize) */
+@media (display-mode: browser), (display-mode: standalone) {
+  :root:not(.tauri-app) #root {
+    padding-bottom: var(--keyboard-inset-bottom, 0px);
+  }
 }
 
 @font-face {

@@ -112,7 +112,7 @@ export const RightPanel = memo(function RightPanel() {
       size={rightPanelWidth}
       onSizeChange={layoutStore.setRightPanelWidth}
       onClose={layoutStore.closeRightPanel}
-      className="pb-[var(--safe-area-inset-bottom)] keyboard-inset-padding"
+      className="pb-[var(--safe-area-inset-bottom)]"
     >
       <PanelContainer position="right" onNewTerminal={handleNewTerminal} onCloseTerminal={handleCloseTerminal}>
         {renderContent}

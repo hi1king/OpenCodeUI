@@ -20,6 +20,10 @@ dist-ssr
 # Docker
 workspace/
 
+# Rust
+src-tauri/target/
+src-tauri/Cargo.lock
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

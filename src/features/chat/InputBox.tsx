@@ -633,10 +633,8 @@ function InputBoxComponent({
             </div>
           </div>
 
-          <div className="keyboard-inset-cancel">
-            {/* Footer: disclaimer + todo progress */}
-            <InputFooter sessionId={sessionId} onNewChat={onNewChat} />
-          </div>
+          {/* Footer: disclaimer + todo progress */}
+          <InputFooter sessionId={sessionId} onNewChat={onNewChat} />
         </div>
       </div>
     </div>

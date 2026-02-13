@@ -23,6 +23,11 @@
       "csp": null
     }
   },
+  "plugins": {
+    "notification": {
+      "enabled": true
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis", "dmg", "deb", "appimage"],
