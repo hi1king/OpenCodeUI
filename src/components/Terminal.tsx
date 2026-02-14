@@ -10,6 +10,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { getPtyConnectUrl, updatePtySession } from '../api/pty'
 import { layoutStore } from '../store/layoutStore'
+import { themeStore } from '../store/themeStore'
 
 // ============================================
 // 终端主题 - 与应用主题配合
@@ -162,7 +163,7 @@ export const Terminal = memo(function Terminal({
     const terminal = new XTerm({
       theme,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-      fontSize: isMobile ? 14 : 13,
+      fontSize: themeStore.fontSize - (isMobile ? 2 : 3),
       lineHeight: isMobile ? 1.3 : 1.2,
       cursorBlink: true,
       cursorStyle: 'block',
@@ -195,20 +196,27 @@ export const Terminal = memo(function Terminal({
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
 
-    // 连接 WebSocket
+    // 连接 WebSocket（带自动重连）
+    let reconnectTimer: number | null = null
+    let reconnectAttempt = 0
+    const MAX_RECONNECT_DELAY = 30000 // 最大 30s
+    const BASE_RECONNECT_DELAY = 1000 // 起始 1s
+    let intentionalClose = false // 标记主动关闭
+
     const connectWs = () => {
       if (!mountedRef.current) return
       
       fitAddon.fit()
       
       const wsUrl = getPtyConnectUrl(ptyId, directory)
-      console.log('[Terminal] Connecting to:', wsUrl)
+      console.log('[Terminal] Connecting to:', wsUrl, reconnectAttempt > 0 ? `(reconnect #${reconnectAttempt})` : '')
       ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
       ws.onopen = () => {
         console.log('[Terminal] WebSocket connected:', ptyId)
         if (!mountedRef.current) return
+        reconnectAttempt = 0 // 重置重连计数
         layoutStore.updateTerminalTab(ptyId, { status: 'connected' })
         const { cols, rows } = terminal
         console.log('[Terminal] Sending size:', cols, 'x', rows)
@@ -224,13 +232,28 @@ export const Terminal = memo(function Terminal({
         console.log('[Terminal] WebSocket closed:', ptyId, e.code, e.reason)
         if (!mountedRef.current) return
         layoutStore.updateTerminalTab(ptyId, { status: 'disconnected' })
-        terminal.write('\r\n\x1b[90m[Connection closed]\x1b[0m\r\n')
+
+        // 主动关闭或正常关闭（1000）不重连
+        if (intentionalClose || e.code === 1000) {
+          terminal.write('\r\n\x1b[90m[Connection closed]\x1b[0m\r\n')
+          return
+        }
+
+        // 自动重连
+        reconnectAttempt++
+        const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempt - 1), MAX_RECONNECT_DELAY)
+        terminal.write(`\r\n\x1b[90m[Disconnected, reconnecting in ${(delay / 1000).toFixed(0)}s...]\x1b[0m\r\n`)
+        reconnectTimer = window.setTimeout(() => {
+          reconnectTimer = null
+          if (mountedRef.current) {
+            connectWs()
+          }
+        }, delay)
       }
 
       ws.onerror = (e) => {
         console.log('[Terminal] WebSocket error:', ptyId, e)
-        if (!mountedRef.current) return
-        layoutStore.updateTerminalTab(ptyId, { status: 'disconnected' })
+        // onclose 会在 onerror 之后触发，重连逻辑交给 onclose
       }
 
       disposeData?.dispose()
@@ -250,8 +273,13 @@ export const Terminal = memo(function Terminal({
 
     return () => {
       mountedRef.current = false
+      intentionalClose = true
       if (wsConnectTimeout) {
         cancelAnimationFrame(wsConnectTimeout)
+      }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
       }
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current)
@@ -281,10 +309,48 @@ export const Terminal = memo(function Terminal({
 
     let touchStartY = 0
     let scrollStart = 0
+    let lastTouchY = 0
+    let lastTouchTime = 0
+    let velocity = 0
+    let momentumRaf = 0
+
+    const stopMomentum = () => {
+      if (momentumRaf) {
+        cancelAnimationFrame(momentumRaf)
+        momentumRaf = 0
+      }
+    }
+
+    const startMomentum = () => {
+      const viewport = terminal.element?.querySelector('.xterm-viewport') as HTMLElement | null
+      if (!viewport || Math.abs(velocity) < 0.5) {
+        setIsTouchScrolling(false)
+        return
+      }
+
+      const friction = 0.95
+      const step = () => {
+        velocity *= friction
+        if (Math.abs(velocity) < 0.5) {
+          momentumRaf = 0
+          // 惯性结束后延迟淡出滚动条
+          setTimeout(() => setIsTouchScrolling(false), 600)
+          return
+        }
+        viewport.scrollTop += velocity
+        momentumRaf = requestAnimationFrame(step)
+      }
+      momentumRaf = requestAnimationFrame(step)
+    }
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 1) return
-      touchStartY = e.touches[0].clientY
+      stopMomentum()
+      const y = e.touches[0].clientY
+      touchStartY = y
+      lastTouchY = y
+      lastTouchTime = Date.now()
+      velocity = 0
       const viewport = terminal.element?.querySelector('.xterm-viewport') as HTMLElement | null
       scrollStart = viewport?.scrollTop ?? 0
       setIsTouchScrolling(false)
@@ -294,10 +360,23 @@ export const Terminal = memo(function Terminal({
       if (e.touches.length !== 1) return
       const viewport = terminal.element?.querySelector('.xterm-viewport') as HTMLElement | null
       if (!viewport) return
-      const delta = touchStartY - e.touches[0].clientY
+
+      const y = e.touches[0].clientY
+      const delta = touchStartY - y
+
       if (Math.abs(delta) > 6) {
         setIsTouchScrolling(true)
       }
+
+      // 计算速度（用于惯性）
+      const now = Date.now()
+      const dt = now - lastTouchTime
+      if (dt > 0) {
+        velocity = (lastTouchY - y) / dt * 16 // 归一化到每帧 px
+      }
+      lastTouchY = y
+      lastTouchTime = now
+
       viewport.scrollTop = scrollStart + delta
       if (isMobile) {
         e.preventDefault()
@@ -305,7 +384,7 @@ export const Terminal = memo(function Terminal({
     }
 
     const handleTouchEnd = () => {
-      setIsTouchScrolling(false)
+      startMomentum()
     }
 
     container.addEventListener('touchstart', handleTouchStart, { passive: true })
@@ -313,6 +392,7 @@ export const Terminal = memo(function Terminal({
     container.addEventListener('touchend', handleTouchEnd)
 
     return () => {
+      stopMomentum()
       container.removeEventListener('touchstart', handleTouchStart)
       container.removeEventListener('touchmove', handleTouchMove)
       container.removeEventListener('touchend', handleTouchEnd)
@@ -383,6 +463,25 @@ export const Terminal = memo(function Terminal({
     return () => observer.disconnect()
   }, [])
 
+  // 字体大小跟随 themeStore 变化
+  useEffect(() => {
+    const isMobile = isMobileDevice()
+    const unsubscribe = themeStore.subscribe(() => {
+      const terminal = terminalRef.current
+      if (!terminal) return
+      const newSize = themeStore.fontSize - (isMobile ? 2 : 3)
+      if (terminal.options.fontSize !== newSize) {
+        terminal.options.fontSize = newSize
+        if (fitAddonRef.current) {
+          fitAddonRef.current.fit()
+          const { cols, rows } = terminal
+          updatePtySession(ptyId, { size: { cols, rows } }, directory).catch(() => {})
+        }
+      }
+    })
+    return () => unsubscribe()
+  }, [ptyId, directory])
+
   // 当 tab 变为活动状态时，聚焦并重新 fit
   useEffect(() => {
     if (isActive && terminalRef.current) {
@@ -428,17 +527,34 @@ export const Terminal = memo(function Terminal({
         .xterm {
           padding: 0 !important;
         }
-        .scrollbar-idle .xterm-viewport {
-          scrollbar-width: none;
+        /* 滚动条基础样式 */
+        .xterm-viewport {
+          scrollbar-width: thin;
+          scrollbar-color: hsl(var(--border-300) / 0.25) transparent;
         }
-        .scrollbar-active .xterm-viewport {
-          scrollbar-width: none;
+        .xterm-viewport::-webkit-scrollbar {
+          width: 6px;
+          background: transparent;
         }
-        .scrollbar-idle .xterm-viewport::-webkit-scrollbar,
-        .scrollbar-active .xterm-viewport::-webkit-scrollbar {
-          width: 0;
-          height: 0;
-          display: none;
+        .xterm-viewport::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .xterm-viewport::-webkit-scrollbar-thumb {
+          background-color: hsl(var(--border-300) / 0.25);
+          border-radius: 99px;
+          transition: background-color 0.2s ease;
+        }
+        .xterm-viewport::-webkit-scrollbar-thumb:hover {
+          background-color: hsl(var(--border-300) / 0.5);
+        }
+        /* 移动端：空闲时滚动条淡出，滚动时显示 */
+        .scrollbar-idle .xterm-viewport::-webkit-scrollbar-thumb {
+          background-color: hsl(var(--border-300) / 0);
+          transition: background-color 0.8s ease;
+        }
+        .scrollbar-active .xterm-viewport::-webkit-scrollbar-thumb {
+          background-color: hsl(var(--border-300) / 0.35);
+          transition: background-color 0.15s ease;
         }
       `}</style>
       <div
