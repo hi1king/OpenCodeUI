@@ -36,6 +36,7 @@ export interface RevertHistoryItem {
   attachments: unknown[]
   model?: { providerID: string; modelID: string }
   variant?: string
+  agent?: string
 }
 
 export interface SessionState {
@@ -620,6 +621,7 @@ class MessageStore {
                 attachments: this.extractUserAttachments(m),
                 model: userInfo.model,
                 variant: userInfo.variant,
+                agent: userInfo.agent,
               }
             }),
           }

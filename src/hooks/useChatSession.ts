@@ -18,11 +18,13 @@ import {
 } from '../api'
 import { getMessageText } from '../types/message'
 import { createErrorHandler } from '../utils'
+import { serverStorage } from '../utils/perServerStorage'
 import { 
   PERMISSION_POLL_INTERVAL_MS,
   INITIAL_SCROLL_DELAY_MS,
   UNDO_SCROLL_DELAY_MS,
   AUTO_SCROLL_SUPPRESS_DURATION_MS,
+  STORAGE_KEY_SELECTED_AGENT,
 } from '../constants'
 import type { ChatAreaHandle } from '../features/chat'
 
@@ -49,7 +51,15 @@ export function useChatSession({ chatAreaRef, currentModel, refetchModels }: Use
   
   // Agents
   const [agents, setAgents] = useState<ApiAgent[]>([])
-  const [selectedAgent, setSelectedAgent] = useState<string>('build')
+  const [selectedAgent, setSelectedAgentRaw] = useState<string>(() => {
+    return serverStorage.get(STORAGE_KEY_SELECTED_AGENT) || ''
+  })
+
+  // 封装 setSelectedAgent：同步写入 serverStorage（按服务器隔离）
+  const setSelectedAgent = useCallback((agentName: string) => {
+    setSelectedAgentRaw(agentName)
+    serverStorage.set(STORAGE_KEY_SELECTED_AGENT, agentName)
+  }, [])
 
   // Hooks
   const { resetPermissions } = usePermissions()
@@ -222,6 +232,19 @@ export function useChatSession({ chatAreaRef, currentModel, refetchModels }: Use
       .then(setAgents)
       .catch(err => handleError('fetch agents', err))
   }, [currentDirectory])
+
+  // agents 列表加载后，校验当前选中的 agent 是否存在于列表中
+  useEffect(() => {
+    if (agents.length === 0) return
+    const primaryAgents = agents.filter(a => a.mode === 'primary' && !a.hidden)
+    if (primaryAgents.length === 0) return
+
+    // 当前选中的 agent 在列表中存在就不动
+    if (selectedAgent && primaryAgents.some(a => a.name === selectedAgent)) return
+
+    // 否则选第一个 primary agent
+    setSelectedAgent(primaryAgents[0].name)
+  }, [agents]) // 故意不依赖 selectedAgent，只在 agents 列表变化时校验
 
   // Load pending permissions on session change
   useEffect(() => {
@@ -408,13 +431,24 @@ export function useChatSession({ chatAreaRef, currentModel, refetchModels }: Use
     }
   }, [sessions, routeSessionId, navigateToSession])
 
-  // Toggle agent (cycle through available agents)
+  // Toggle agent (cycle through primary agents only, matching toolbar display)
   const handleToggleAgent = useCallback(() => {
-    if (!agents.length) return
-    const currentIndex = agents.findIndex(a => a.name === selectedAgent)
-    const nextIndex = (currentIndex + 1) % agents.length
-    setSelectedAgent(agents[nextIndex].name)
+    const primaryAgents = agents.filter(a => a.mode === 'primary' && !a.hidden)
+    if (primaryAgents.length <= 1) return
+    const currentIndex = primaryAgents.findIndex(a => a.name === selectedAgent)
+    const nextIndex = (currentIndex + 1) % primaryAgents.length
+    setSelectedAgent(primaryAgents[nextIndex].name)
   }, [agents, selectedAgent, setSelectedAgent])
+
+  // 从消息中恢复 agent 选择（用于切换 session 时）
+  const restoreAgentFromMessage = useCallback((agentName: string | null | undefined) => {
+    if (!agentName) return
+    // 只有当 agent 存在于列表中时才恢复
+    const exists = agents.some(a => a.name === agentName && a.mode === 'primary' && !a.hidden)
+    if (exists) {
+      setSelectedAgent(agentName)
+    }
+  }, [agents, setSelectedAgent])
 
   // Copy last AI response to clipboard
   const handleCopyLastResponse = useCallback(async () => {
@@ -487,5 +521,6 @@ export function useChatSession({ chatAreaRef, currentModel, refetchModels }: Use
     handleNextSession,
     handleToggleAgent,
     handleCopyLastResponse,
+    restoreAgentFromMessage,
   }
 }

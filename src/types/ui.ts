@@ -84,6 +84,7 @@ export interface RevertHistoryItem {
   attachments: Attachment[]
   model?: { providerID: string; modelID: string }
   variant?: string
+  agent?: string
 }
 
 /**

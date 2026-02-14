@@ -223,6 +223,7 @@ function App() {
     handleNextSession,
     handleToggleAgent,
     handleCopyLastResponse,
+    restoreAgentFromMessage,
   } = useChatSession({ chatAreaRef, currentModel, refetchModels })
 
 
@@ -252,6 +253,25 @@ function App() {
       restoreFromMessage(userInfo.model, userInfo.variant)
     }
   }, [messages, models, revertedContent, restoreFromMessage])
+
+  // ============================================
+  // Agent Restoration Effect
+  // ============================================
+  useEffect(() => {
+    // 1. 优先从 revertedContent 恢复（Undo/Redo 场景）
+    if (revertedContent?.agent) {
+      restoreAgentFromMessage(revertedContent.agent)
+      return
+    }
+
+    // 2. 从历史消息恢复（切换 session 时）
+    if (messages.length === 0) return
+
+    const lastUserMsg = [...messages].reverse().find(m => m.info.role === 'user')
+    if (lastUserMsg && 'agent' in lastUserMsg.info) {
+      restoreAgentFromMessage((lastUserMsg.info as { agent?: string }).agent)
+    }
+  }, [messages, revertedContent, restoreAgentFromMessage])
 
   // ============================================
   // Global Keybindings

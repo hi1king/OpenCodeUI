@@ -5,6 +5,9 @@
 /** 选中的模型 key */
 export const STORAGE_KEY_SELECTED_MODEL = 'selected-model-key'
 
+/** 选中的 agent */
+export const STORAGE_KEY_SELECTED_AGENT = 'selected-agent'
+
 /** 宽模式设置 */
 export const STORAGE_KEY_WIDE_MODE = 'chat-wide-mode'
 
