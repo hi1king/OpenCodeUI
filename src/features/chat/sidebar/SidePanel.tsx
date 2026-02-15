@@ -84,7 +84,7 @@ export function SidePanel({
   isWideMode,
   onToggleWideMode,
 }: SidePanelProps) {
-  const { currentDirectory, savedDirectories, setCurrentDirectory, removeDirectory, recentProjects } = useDirectory()
+  const { currentDirectory, savedDirectories, setCurrentDirectory, removeDirectory, addDirectory, recentProjects } = useDirectory()
   const [connectionState, setConnectionState] = useState<ConnectionInfo | null>(null)
   const [projectDeleteConfirm, setProjectDeleteConfirm] = useState<{ isOpen: boolean; projectId: string | null }>({
     isOpen: false,
@@ -173,11 +173,15 @@ export function SidePanel({
   }, [removeDirectory])
 
   const handleSelect = useCallback((session: ApiSession) => {
+    // Global 模式下，点击 session 自动切换到该 session 的工作目录并添加到项目列表
+    if (!currentDirectory && session.directory) {
+      addDirectory(session.directory)
+    }
     onSelectSession(session)
     if (window.innerWidth < 768 && onCloseMobile) {
       onCloseMobile()
     }
-  }, [onSelectSession, onCloseMobile])
+  }, [currentDirectory, addDirectory, onSelectSession, onCloseMobile])
 
   const handleRename = useCallback(async (sessionId: string, newTitle: string) => {
     try {
@@ -422,6 +426,7 @@ export function SidePanel({
                 grouped={false}
                 density="compact"
                 showStats
+                showDirectory={!currentDirectory}
               />
             </div>
           )}

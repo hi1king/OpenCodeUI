@@ -22,6 +22,8 @@ interface SessionListProps {
   grouped?: boolean
   density?: 'default' | 'compact'
   showStats?: boolean
+  /** Global 模式下显示每个 session 的目录名 */
+  showDirectory?: boolean
 }
 
 // 时间分组类型
@@ -44,6 +46,7 @@ export function SessionList({
   grouped = true,
   density = 'default',
   showStats = true,
+  showDirectory = false,
 }: SessionListProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -173,6 +176,7 @@ export function SessionList({
                         onRename={(newTitle) => onRename(session.id, newTitle)}
                         density={density}
                         showStats={showStats}
+                        showDirectory={showDirectory}
                       />
                   ))}
                 </div>
@@ -192,6 +196,7 @@ export function SessionList({
                 onRename={(newTitle) => onRename(session.id, newTitle)}
                 density={density}
                 showStats={showStats}
+                showDirectory={showDirectory}
               />
             ))}
           </div>
@@ -234,9 +239,10 @@ interface SessionItemProps {
   onRename: (newTitle: string) => void
   density?: 'default' | 'compact'
   showStats?: boolean
+  showDirectory?: boolean
 }
 
-function SessionItem({ session, isSelected, onSelect, onDelete, onRename, density = 'default', showStats = true }: SessionItemProps) {
+function SessionItem({ session, isSelected, onSelect, onDelete, onRename, density = 'default', showStats: _showStats = true, showDirectory = false }: SessionItemProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(session.title || '')
   const [showActions, setShowActions] = useState(false)
@@ -379,66 +385,70 @@ function SessionItem({ session, isSelected, onSelect, onDelete, onRename, densit
           : 'hover:bg-bg-200/50'
       } ${showActions ? 'bg-bg-200/50' : ''}`}
     >
-      <div className="flex-1 min-w-0 pr-1">
-        {/* Row 1: Title + Time/Actions */}
-        <div className={`flex items-start justify-between gap-2 ${isCompact ? 'h-4' : 'h-5'}`}>
-          <p 
-            className={`${isCompact ? 'text-[13px]' : 'text-sm'} truncate font-medium flex-1 ${isSelected ? 'text-text-100' : 'text-text-200 group-hover:text-text-100'}`}
-            title={session.title || 'Untitled Chat'}
-          >
-            {session.title || 'Untitled Chat'}
-          </p>
-          
-          {/* Time: Hidden when actions visible */}
-          {session.time?.updated && !actionsVisible && (
-            <span className="flex-shrink-0 text-[10px] text-text-400 opacity-60 group-hover:opacity-0 transition-opacity duration-200">
-              {formatRelativeTime(session.time.updated)}
-            </span>
+      <div className={`flex-1 min-w-0 transition-[padding] duration-200 ${showActions ? 'pr-[60px]' : 'pr-1 group-hover:pr-[60px]'}`}>
+        {/* Row 1: Title */}
+        <p 
+          className={`${isCompact ? 'text-[13px]' : 'text-sm'} truncate font-medium ${isSelected ? 'text-text-100' : 'text-text-200 group-hover:text-text-100'}`}
+          title={session.title || 'Untitled Chat'}
+        >
+          {session.title || 'Untitled Chat'}
+        </p>
+
+        {/* Row 2: Meta line — 始终存在，保持高度一致 */}
+        <div className={`flex items-center ${isCompact ? 'mt-1' : 'mt-1.5'} h-4 text-[10px] text-text-400 gap-1 overflow-hidden`}>
+          {/* 时间 */}
+          {session.time?.updated && (
+            <span className="shrink-0 opacity-60">{formatRelativeTime(session.time.updated)}</span>
           )}
-        </div>
-
-        {/* Row 2: Stats / Placeholder */}
-        {/* Actions: hover on desktop, long-press on mobile — 整个 item 垂直居中 */}
-        <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 transition-all duration-200 z-10 ${
-          actionsVisible 
-            ? 'opacity-100 pointer-events-auto' 
-            : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
-        }`}>
-          <button
-            onClick={handleStartEdit}
-            className="p-1.5 rounded-md hover:bg-bg-300 active:bg-bg-300 text-text-400 hover:text-text-100 transition-colors focus:outline-none"
-            title="Rename"
-          >
-            <PencilIcon className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleDelete}
-            className="p-1.5 rounded-md hover:bg-danger-bg active:bg-danger-bg text-text-400 hover:text-danger-100 active:text-danger-100 transition-colors focus:outline-none"
-            title="Delete"
-          >
-            <TrashIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {showStats && (
-          <div className={`flex items-center gap-2 ${isCompact ? 'mt-1' : 'mt-1.5'} h-4`}>
-            {session.summary ? (
-              <div className="flex items-center gap-2 text-[10px] font-mono opacity-80">
+          {/* Stats */}
+          {session.summary && (
+            <>
+              <span className="opacity-30">·</span>
+              <span className="flex items-center gap-1.5 font-mono shrink-0">
                 {session.summary.additions > 0 && (
-                  <span className="text-success-100 bg-success-100/10 px-1 rounded">+{session.summary.additions}</span>
+                  <span className="text-success-100">+{session.summary.additions}</span>
                 )}
                 {session.summary.deletions > 0 && (
-                  <span className="text-danger-100 bg-danger-100/10 px-1 rounded">-{session.summary.deletions}</span>
+                  <span className="text-danger-100">-{session.summary.deletions}</span>
                 )}
                 {session.summary.files > 0 && (
-                  <span className="text-text-400">{session.summary.files} {session.summary.files === 1 ? 'file' : 'files'}</span>
+                  <span>{session.summary.files}f</span>
                 )}
-              </div>
-            ) : (
-              <span className="text-[10px] text-text-400/40 italic">No changes</span>
-            )}
-          </div>
-        )}
+              </span>
+            </>
+          )}
+          {/* Directory (Global mode) */}
+          {showDirectory && session.directory && (
+            <>
+              <span className="opacity-30 shrink-0">·</span>
+              <span className="truncate opacity-50" title={session.directory}>
+                {session.directory.replace(/\\/g, '/').split('/').filter(Boolean).pop()}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Actions: hover on desktop, long-press on mobile */}
+      <div className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 transition-all duration-200 z-10 ${
+        actionsVisible 
+          ? 'opacity-100 pointer-events-auto' 
+          : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
+      }`}>
+        <button
+          onClick={handleStartEdit}
+          className="p-1.5 rounded-md hover:bg-bg-300 active:bg-bg-300 text-text-400 hover:text-text-100 transition-colors focus:outline-none"
+          title="Rename"
+        >
+          <PencilIcon className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={handleDelete}
+          className="p-1.5 rounded-md hover:bg-danger-bg active:bg-danger-bg text-text-400 hover:text-danger-100 active:text-danger-100 transition-colors focus:outline-none"
+          title="Delete"
+        >
+          <TrashIcon className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   )
