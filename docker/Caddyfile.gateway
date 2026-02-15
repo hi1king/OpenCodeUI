@@ -9,11 +9,8 @@
 	}
 
 	# Routes UI
-	handle /routes {
-		reverse_proxy 127.0.0.1:7070
-	}
-
-	handle /routes.json {
+	@routes path /routes
+	handle @routes {
 		reverse_proxy 127.0.0.1:7070
 	}
 

@@ -223,21 +223,18 @@ def build_routes_payload():
     return {"routes": routes}
 
 
-@app.get("/routes.json")
-def get_routes_json():
-    if not check_basic_auth(request.headers.get("Authorization")):
-        return Response(
-            "Unauthorized", status=401, headers={"WWW-Authenticate": "Basic"}
-        )
-    return jsonify(build_routes_payload())
-
-
 @app.get("/routes")
-def get_routes_html():
+def get_routes():
     if not check_basic_auth(request.headers.get("Authorization")):
         return Response(
             "Unauthorized", status=401, headers={"WWW-Authenticate": "Basic"}
         )
+
+    if request.args.get("format") == "json":
+        return jsonify(build_routes_payload())
+
+    payload = build_routes_payload()
+    routes_json = json.dumps(payload)
     html = """
 <!doctype html>
 <html lang="en">
@@ -589,43 +586,46 @@ def get_routes_html():
       })
     }
 
+    let currentData = __INITIAL_DATA__
+
+    function applyFilter() {
+      const q = filterInput.value.trim().toLowerCase()
+      const routes = (currentData.routes || []).filter(r =>
+        !q || r.token.toLowerCase().includes(q) || String(r.port).includes(q)
+      )
+      render(routes)
+    }
+
     async function load() {
       countEl.textContent = 'loading...'
       try {
-        const res = await fetch('/routes.json', { cache: 'no-store' })
+        const res = await fetch('/routes?format=json', { cache: 'no-store' })
         if (!res.ok) { countEl.textContent = 'error ' + res.status; return }
-        const data = await res.json()
-        const q = filterInput.value.trim().toLowerCase()
-        const routes = (data.routes || []).filter(r =>
-          !q || r.token.toLowerCase().includes(q) || String(r.port).includes(q)
-        )
-        render(routes)
+        currentData = await res.json()
+        applyFilter()
       } catch (e) {
         countEl.textContent = 'failed to load'
       }
     }
 
     refreshBtn.addEventListener('click', load)
-    filterInput.addEventListener('input', load)
+    filterInput.addEventListener('input', applyFilter)
     copyAllBtn.addEventListener('click', async () => {
-      try {
-        const res = await fetch('/routes.json', { cache: 'no-store' })
-        const data = await res.json()
-        const urls = (data.routes || []).map(publicUrl).join('\n')
-        if (urls) {
-          await navigator.clipboard.writeText(urls)
-          copyAllBtn.textContent = 'Copied'
-          setTimeout(() => copyAllBtn.textContent = 'Copy all', 1200)
-        }
-      } catch {}
+      const urls = (currentData.routes || []).map(publicUrl).join('\\n')
+      if (urls) {
+        await navigator.clipboard.writeText(urls)
+        copyAllBtn.textContent = 'Copied'
+        setTimeout(() => copyAllBtn.textContent = 'Copy all', 1200)
+      }
     })
 
-    load()
+    applyFilter()
     setInterval(load, 8000)
   </script>
 </body>
 </html>
     """
+    html = html.replace("__INITIAL_DATA__", routes_json)
     return Response(html, mimetype="text/html")
 
 
