@@ -154,7 +154,15 @@ export function useSessionManager({
       }
 
       const oldestIndex = apiMessages.findIndex(m => m.info.id === oldestId)
-      if (oldestIndex <= 0) {
+
+      // findIndex 返回 -1 说明 API 返回中找不到当前最旧的消息
+      // 可能是 streaming 期间新消息涌入导致 limit 范围没覆盖到，不应终止加载
+      if (oldestIndex === -1) {
+        return
+      }
+
+      // oldestIndex === 0 说明 API 返回的第一条就是当前最旧消息，确实没有更旧的了
+      if (oldestIndex === 0) {
         messageStore.prependMessages(sessionId, [], false)
         return
       }
